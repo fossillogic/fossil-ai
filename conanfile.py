@@ -3,12 +3,12 @@ from conan.tools.meson import Meson, MesonToolchain
 from conan.tools.files import copy
 import os
 
-class FossilJellyfishConan(ConanFile):
-    name = "fossil_jellyfish"
+class FossilAiConan(ConanFile):
+    name = "fossil_ai"
     version = "0.1.4"
     license = "MPL-2.0"
     author = "Fossil Logic <michaelbrockus@gmail.com>"
-    url = "https://github.com/fossillogic/fossil-jellyfish"
+    url = "https://github.com/fossillogic/fossil-ai"
     description = "Fossil Jellyfish is a lightweight, portable Truthful Intelligence and AI library written in pure C with zero external dependencies."
     topics = ("c", "ti", "chat", "nlp", "cpp", "meson", "conan-recipe", "mesonbuild", "ninja-build")
 
@@ -50,7 +50,7 @@ class FossilJellyfishConan(ConanFile):
 
     def package_info(self):
         """Set information for consumers of the package"""
-        self.cpp_info.libs = ["fossil_jellyfish"]
+        self.cpp_info.libs = ["fossil_ai"]
         self.cpp_info.includedirs = ["include"]
 
     def source(self):
