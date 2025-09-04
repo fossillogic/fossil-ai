@@ -33,30 +33,30 @@ To get started, ensure you have the following installed:
 
 #### Adding via Meson Git Wrap
 
-To add a git-wrap, place a `.wrap` file in `subprojects` with the Git repo URL and revision, then use `dependency('fossil-jellyfish')` in `meson.build` so Meson can fetch and build it automatically.
+To add a git-wrap, place a `.wrap` file in `subprojects` with the Git repo URL and revision, then use `dependency('fossil-ai')` in `meson.build` so Meson can fetch and build it automatically.
 
 #### Adding via Conan GitHub repository
 
  packages directly from a GitHub repository if it contains a valid `conanfile.py`.
 
 ```bash
-conan install git+https://github.com/fossillogic/fossil-jellyfish.git#v0.1.4 --name fossil_jellyfish --build=missing
+conan install git+https://github.com/fossillogic/fossil-ai.git#v0.1.4 --name fossil_ai --build=missing
 ```
 
 #### Integrate the Dependency:
 
-Add the `fossil-jellyfish.wrap` file in your `subprojects` directory and include the following content:
+Add the `fossil-ai.wrap` file in your `subprojects` directory and include the following content:
 
 ```ini
 [wrap-git]
-url = https://github.com/fossillogic/fossil-jellyfish.git
+url = https://github.com/fossillogic/fossil-ai.git
 revision = v0.1.4
 
 [provide]
-dependency_names = fossil-jellyfish
+dependency_names = fossil-ai
 ```
 
-**Note**: For the best experience, always use the latest releases. Visit the [releases](https://github.com/fossillogic/fossil-jellyfish/releases) page for the latest versions.
+**Note**: For the best experience, always use the latest releases. Visit the [releases](https://github.com/fossillogic/fossil-ai/releases) page for the latest versions.
 
 ## Configure Options
 
