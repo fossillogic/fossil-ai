@@ -8,14 +8,14 @@ else
     winsock_dep = []
 endif
 
-fossil_fish_lib = library('fossil_jellyfish',
+fossil_ai_lib = library('fossil_ai',
     files('jellyfish.c', 'iochat.c', 'language.c'),
     install: true,
     dependencies: [cc.find_library('m', required: false), winsock_dep],
     include_directories: dir)
 
-fossil_fish_dep = declare_dependency(
-    link_with: [fossil_fish_lib],
+fossil_ai_dep = declare_dependency(
+    link_with: [fossil_ai_lib],
     include_directories: dir)
 
-meson.override_dependency('fossil-jellyfish', fossil_jellyfish_dep)
+meson.override_dependency('fossil-ai', fossil_ai_dep)
