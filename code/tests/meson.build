@@ -5,7 +5,7 @@ if get_option('with_test').enabled()
     test_cases = ['unit_runner.c', cards.stdout().strip().split('\n')]
 
     pizza_c = executable('pizza', test_cases, include_directories: dir,
-        dependencies: [dependency('fossil-test'), fossil_fish_dep])
+        dependencies: [dependency('fossil-test'), fossil_ai_dep])
 
     test('fossil testing C', pizza_c)
 endif
