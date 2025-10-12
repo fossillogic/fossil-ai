@@ -64,24 +64,67 @@ extern "C"
 // *****************************************************************************
 
 /**
- * @brief Enumerates the types of memory blocks in Truthful Intelligence.
+ * @brief Enumerates commit types for the Jellyfish AI Git-chain hybrid.
  *
- * These types represent the epistemic role of a memory unit.
- * Git-like structure allows branching, merging, and commits.
+ * These types model how knowledge evolves, diverges, merges, and stabilizes,
+ * mirroring Git operations while preserving AI reasoning intent.
  */
 typedef enum {
-    JELLY_BLOCK_UNKNOWN = 0,
-    JELLY_BLOCK_OBSERVED = 1,      // Raw input/output from external observation
-    JELLY_BLOCK_INFERRED = 2,      // Derived or reasoned logic
-    JELLY_BLOCK_VALIDATED = 3,     // Verified by external or internal checks
-    JELLY_BLOCK_CORRECTED = 4,     // Manual correction or patch
-    JELLY_BLOCK_ASSUMED = 5,       // Inferred without contradiction
-    JELLY_BLOCK_RETRACTED = 6,     // Invalidated or superseded
-    JELLY_BLOCK_EXPERIMENTAL = 7,  // Hypothetical/test branch
-    JELLY_BLOCK_GUIDED = 8,        // Manually guided (prompt-based)
-    JELLY_BLOCK_IMMUTABLE = 9,     // Permanent, trusted assertion
-    JELLY_BLOCK_ARCHIVED = 10      // Frozen snapshot (Git tag equivalent)
-} fossil_jellyfish_block_type_t;
+    // -----------------------------------------------------------------
+    // Core commits — foundational and reasoning states
+    // -----------------------------------------------------------------
+    JELLY_COMMIT_UNKNOWN = 0,          // Undefined or placeholder commit
+    JELLY_COMMIT_INIT = 1,             // Genesis or initial commit in a chain
+    JELLY_COMMIT_OBSERVE = 2,          // Observation or raw data intake
+    JELLY_COMMIT_INFER = 3,            // Logical derivation or reasoning commit
+    JELLY_COMMIT_VALIDATE = 4,         // Verified or confirmed (trusted) result
+    JELLY_COMMIT_PATCH = 5,            // Correction or manual hotfix commit
+
+    // -----------------------------------------------------------------
+    // Branching and merging — reasoning paths and reconciliation
+    // -----------------------------------------------------------------
+    JELLY_COMMIT_BRANCH = 10,          // Divergent reasoning path or hypothesis branch
+    JELLY_COMMIT_MERGE = 11,           // Merge of two or more reasoning lines
+    JELLY_COMMIT_REBASE = 12,          // Rebased logic onto new foundation
+    JELLY_COMMIT_CHERRY_PICK = 13,     // Selective logic adoption (copy commit)
+    JELLY_COMMIT_FORK = 14,            // Forked repository / cloned memory state
+
+    // -----------------------------------------------------------------
+    // Tagging, releases, and archival
+    // -----------------------------------------------------------------
+    JELLY_COMMIT_TAG = 20,             // Stable tagged version (snapshot)
+    JELLY_COMMIT_RELEASE = 21,         // Publicly declared stable reasoning state
+    JELLY_COMMIT_ARCHIVE = 22,         // Frozen, immutable version
+    JELLY_COMMIT_SNAPSHOT = 23,        // Temporary snapshot (autosave/checkpoint)
+
+    // -----------------------------------------------------------------
+    // Experimental and ephemeral states
+    // -----------------------------------------------------------------
+    JELLY_COMMIT_EXPERIMENT = 30,      // Experimental reasoning branch
+    JELLY_COMMIT_STASH = 31,           // Temporary hold or deferred logic
+    JELLY_COMMIT_DRAFT = 32,           // Work-in-progress state (unvalidated)
+    JELLY_COMMIT_REVERT = 33,          // Undo/reversal of prior commit
+    JELLY_COMMIT_ROLLBACK = 34,        // Forced rollback (AI self-correction)
+
+    // -----------------------------------------------------------------
+    // Collaboration, synchronization, and meta-commits
+    // -----------------------------------------------------------------
+    JELLY_COMMIT_SYNC = 40,            // Synced with external node or agent
+    JELLY_COMMIT_MIRROR = 41,          // Mirrored repository state
+    JELLY_COMMIT_IMPORT = 42,          // Imported external dataset or logic
+    JELLY_COMMIT_EXPORT = 43,          // Exported memory snapshot
+    JELLY_COMMIT_SIGNED = 44,          // Verified signed commit (authoritative)
+    JELLY_COMMIT_REVIEW = 45,          // Peer-reviewed or audited commit
+
+    // -----------------------------------------------------------------
+    // Special and terminal states
+    // -----------------------------------------------------------------
+    JELLY_COMMIT_DETACHED = 50,        // Detached HEAD / isolated reasoning path
+    JELLY_COMMIT_ABANDONED = 51,       // Dropped or deprecated branch
+    JELLY_COMMIT_CONFLICT = 52,        // Conflict-resolving commit
+    JELLY_COMMIT_PRUNE = 53,           // Commit pruned from history
+    JELLY_COMMIT_FINAL = 54            // Terminal or end-of-life commit
+} fossil_jellyfish_commit_type_t;
 
 /**
  * @brief Block Attributes
