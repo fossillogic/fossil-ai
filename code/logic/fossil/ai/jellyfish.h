@@ -60,91 +60,91 @@ extern "C"
 #endif
 
 // *****************************************************************************
-// Type definitions
+// Type definitions — Jellyfish AI Git-Chain Hybrid
 // *****************************************************************************
 
 /**
  * @brief Enumerates the types of memory blocks in Truthful Intelligence.
  *
- * These types help categorize the origin, validation, and purpose of a block.
+ * These types represent the epistemic role of a memory unit.
+ * Git-like structure allows branching, merging, and commits.
  */
 typedef enum {
-    JELLY_BLOCK_UNKNOWN = 0,           // Default/unclassified block
-    JELLY_BLOCK_OBSERVED = 1,          // Raw input/output from real-world interaction
-    JELLY_BLOCK_INFERRED = 2,          // Derived from reasoning or extrapolated logic
-    JELLY_BLOCK_VALIDATED = 3,         // Confirmed by external source (e.g., consensus or signature)
-    JELLY_BLOCK_CORRECTED = 4,         // Modified by user or verifier to fix prior output
-    JELLY_BLOCK_ASSUMED = 5,           // Presumed true due to lack of contradiction (but not verified)
-    JELLY_BLOCK_RETRACTED = 6,         // Marked as invalid or superseded (soft deletion)
-    JELLY_BLOCK_EXPERIMENTAL = 7,      // From test/hypothesis, not to be trusted by default
-    JELLY_BLOCK_GUIDED = 8,            // User-directed insertion (manual memory, prompts, etc.)
-    JELLY_BLOCK_IMMUTABLE = 9,         // Permanent/trusted system-level assertion
-    JELLY_BLOCK_ARCHIVED = 10          // Frozen due to age, stability, or inactivity
+    JELLY_BLOCK_UNKNOWN = 0,
+    JELLY_BLOCK_OBSERVED = 1,      // Raw input/output from external observation
+    JELLY_BLOCK_INFERRED = 2,      // Derived or reasoned logic
+    JELLY_BLOCK_VALIDATED = 3,     // Verified by external or internal checks
+    JELLY_BLOCK_CORRECTED = 4,     // Manual correction or patch
+    JELLY_BLOCK_ASSUMED = 5,       // Inferred without contradiction
+    JELLY_BLOCK_RETRACTED = 6,     // Invalidated or superseded
+    JELLY_BLOCK_EXPERIMENTAL = 7,  // Hypothetical/test branch
+    JELLY_BLOCK_GUIDED = 8,        // Manually guided (prompt-based)
+    JELLY_BLOCK_IMMUTABLE = 9,     // Permanent, trusted assertion
+    JELLY_BLOCK_ARCHIVED = 10      // Frozen snapshot (Git tag equivalent)
 } fossil_jellyfish_block_type_t;
 
 /**
- * Block Attributes - Flags or enumerations for block attributes
+ * @brief Block Attributes
+ * Similar to commit metadata and trust heuristics.
  */
 typedef struct {
-    int immutable;            // 1 = block is immutable, 0 = mutable
-    int valid;                // 1 = block data is valid, 0 = invalid or corrupted
-    float confidence;         // Confidence score for block's content
-    uint32_t usage_count;     // Number of times this block was referenced/used
-    int pruned;               // 1 = block has been pruned/marked for removal, 0 = active
-    int redacted;             // 1 = block has been redacted, 0 = original
-    int deduplicated;         // 1 = block is a deduplicated copy, 0 = unique/original
-    int compressed;           // 1 = block has been compressed, 0 = uncompressed
-    int expired;              // 1 = block is expired, 0 = valid
-    int trusted;              // 1 = block is trusted (e.g., signature verified), 0 = untrusted
-    int conflicted;           // 1 = block is in conflict with another, 0 = no conflict
-    int reserved;             // Reserved for future use (set to 0)
+    int immutable;
+    int valid;
+    float confidence;
+    uint32_t usage_count;
+    int pruned;
+    int redacted;
+    int deduplicated;
+    int compressed;
+    int expired;
+    int trusted;
+    int conflicted;
+    int reserved;
 } fossil_jellyfish_block_attributes_t;
 
 /**
- * Block Timing Information
+ * @brief Block Timing Information
  */
 typedef struct {
-    uint64_t timestamp;       // Epoch time when block was created/learned
-    uint32_t delta_ms;        // Time delta since previous block (ms)
-    uint32_t duration_ms;     // Duration of processing/input (ms)
-    uint64_t updated_at;      // Last modification timestamp (epoch ms)
-    uint64_t expires_at;      // Expiry timestamp (epoch ms), 0 if not set
-    uint64_t validated_at;    // When block was last validated (epoch ms), 0 if never
+    uint64_t timestamp;       // Creation time (commit time)
+    uint32_t delta_ms;        // Time since parent commit
+    uint32_t duration_ms;     // Processing or IO duration
+    uint64_t updated_at;
+    uint64_t expires_at;
+    uint64_t validated_at;
 } fossil_jellyfish_block_time_t;
 
 /**
- * Block Identification and Security
+ * @brief Identification & Ancestry (Git-style DAG commit model)
  */
 typedef struct {
-    uint8_t hash[FOSSIL_JELLYFISH_HASH_SIZE];         // Cryptographic fingerprint of block
-    uint8_t device_id[FOSSIL_DEVICE_ID_SIZE];         // Device where block was created
-    uint8_t signature[FOSSIL_SIGNATURE_SIZE];         // Digital signature for integrity/authentication
-    uint32_t block_index;                             // Index of this block in the chain
-    uint32_t prev_block_index;                        // Index of previous block (for linking/history)
-    uint8_t prev_hash[FOSSIL_JELLYFISH_HASH_SIZE];    // Hash of previous block (for chain integrity)
-    uint32_t signature_len;                           // Actual length of signature (if variable)
-    uint32_t reserved;                                // Reserved for future use (set to 0)
+    uint8_t commit_hash[FOSSIL_JELLYFISH_HASH_SIZE];       // Unique commit identifier
+    uint8_t parent_hashes[4][FOSSIL_JELLYFISH_HASH_SIZE];  // Up to 4 parents (for merges)
+    size_t parent_count;                                   // Number of parent commits
+    uint8_t tree_hash[FOSSIL_JELLYFISH_HASH_SIZE];         // Tree-like content snapshot hash
+    uint8_t author_id[FOSSIL_DEVICE_ID_SIZE];              // Author (device/user)
+    uint8_t committer_id[FOSSIL_DEVICE_ID_SIZE];           // Committer (system or AI agent)
+    uint8_t signature[FOSSIL_SIGNATURE_SIZE];              // Signature for integrity
+    uint32_t signature_len;
+    uint32_t commit_index;                                 // Local index in memory
+    uint32_t branch_id;                                    // Logical branch index (for merges)
+    char commit_message[256];                              // Human-readable reasoning summary
+    int is_merge_commit;                                   // 1 if multi-parent
+    int detached;                                          // 1 if not attached to mainline
+    uint32_t reserved;
 } fossil_jellyfish_block_identity_t;
 
 /**
- * Block Classification / Reasoning Info
+ * @brief Classification / Semantic Relationships
  */
 typedef struct {
-    // Primary logical origin (legacy, main derivation)
-    uint32_t derived_from_index;
-
-    // Multiple cross-references to other blocks (multi-hop graph edges)
-    uint32_t cross_refs[FOSSIL_JELLYFISH_MAX_LINKS];
+    uint32_t derived_from_index;                           // Logical origin
+    uint32_t cross_refs[FOSSIL_JELLYFISH_MAX_LINKS];       // Cross-branch references
     size_t cross_ref_count;
-
-    // Forward references (blocks that derive from this one)
-    uint32_t forward_refs[FOSSIL_JELLYFISH_MAX_LINKS];
+    uint32_t forward_refs[FOSSIL_JELLYFISH_MAX_LINKS];     // Future derivations
     size_t forward_ref_count;
-
-    // reasoning metadata
-    uint16_t reasoning_depth;      // How far from original observation this block is
+    uint16_t reasoning_depth;
     uint16_t reserved;
-
     char classification_reason[128];
     char tags[FOSSIL_JELLYFISH_MAX_TAGS][32];
     float similarity_score;
@@ -153,44 +153,52 @@ typedef struct {
 } fossil_jellyfish_block_classification_t;
 
 /**
- * Core Input/Output Data
+ * @brief Input/Output Core Payload
  */
 typedef struct {
-    char input[FOSSIL_JELLYFISH_INPUT_SIZE];      // Input string (question, prompt, etc.)
-    char output[FOSSIL_JELLYFISH_OUTPUT_SIZE];    // Output string (answer, response, etc.)
-    size_t input_len;                             // Actual length of input (excluding null terminator)
-    size_t output_len;                            // Actual length of output (excluding null terminator)
-    char input_tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];   // Tokenized input
-    size_t input_token_count;                     // Number of input tokens
-    char output_tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];  // Tokenized output
-    size_t output_token_count;                    // Number of output tokens
-    int compressed;                               // 1 if input/output is compressed, 0 otherwise
-    int redacted;                                 // 1 if input/output is redacted, 0 otherwise
-    int reserved;                                 // Reserved for future use (set to 0)
+    char input[FOSSIL_JELLYFISH_INPUT_SIZE];
+    char output[FOSSIL_JELLYFISH_OUTPUT_SIZE];
+    size_t input_len;
+    size_t output_len;
+    char input_tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
+    size_t input_token_count;
+    char output_tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
+    size_t output_token_count;
+    int compressed;
+    int redacted;
+    int reserved;
 } fossil_jellyfish_block_io_t;
 
 /**
- * Complete Jellyfish Memory Block
+ * @brief Complete Git-Chain Block (Commit)
  */
 typedef struct {
-    fossil_jellyfish_block_io_t io;                       // Input/output pair
-    fossil_jellyfish_block_identity_t identity;           // Hash, device, signature
-    fossil_jellyfish_block_time_t time;                   // Timing metadata
-    fossil_jellyfish_block_attributes_t attributes;       // Flags and confidence
-    fossil_jellyfish_block_type_t block_type;             // Type enum
-    fossil_jellyfish_block_classification_t classify;     // Classification info (instead of imagination)
+    fossil_jellyfish_block_io_t io;
+    fossil_jellyfish_block_identity_t identity;
+    fossil_jellyfish_block_time_t time;
+    fossil_jellyfish_block_attributes_t attributes;
+    fossil_jellyfish_block_type_t block_type;
+    fossil_jellyfish_block_classification_t classify;
 } fossil_jellyfish_block_t;
 
 /**
- * Represents a chain of jellyfish blocks.
+ * @brief Git-like Repository of Jellyfish Blocks
  */
 typedef struct {
-    fossil_jellyfish_block_t memory[FOSSIL_JELLYFISH_MAX_MEM];
+    fossil_jellyfish_block_t commits[FOSSIL_JELLYFISH_MAX_MEM];
     size_t count;
 
-    uint8_t device_id[FOSSIL_DEVICE_ID_SIZE];  // For file I/O and ownership
-    uint64_t created_at;                       // Chain creation timestamp
-    uint64_t updated_at;                       // Last update timestamp
+    uint8_t repo_id[FOSSIL_DEVICE_ID_SIZE];      // Unique repository/device
+    char default_branch[64];                     // Default branch name
+    uint64_t created_at;
+    uint64_t updated_at;
+
+    // Branch & reference metadata
+    struct {
+        char name[64];
+        uint8_t head_hash[FOSSIL_JELLYFISH_HASH_SIZE];
+    } branches[FOSSIL_JELLYFISH_MAX_BRANCHES];
+    size_t branch_count;
 } fossil_jellyfish_chain_t;
 
 // *****************************************************************************
