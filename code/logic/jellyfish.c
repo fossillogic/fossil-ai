@@ -3528,31 +3528,6 @@ int fossil_ai_jellyfish_block_link_cross(fossil_ai_jellyfish_block_t *block, uin
     return 1;
 }
 
-int fossil_ai_jellyfish_block_link_cross(fossil_ai_jellyfish_block_t *block, uint32_t target_index) {
-    if (!block) return -1;
-    if (target_index >= (uint32_t)FOSSIL_JELLYFISH_MAX_MEM) return -2;
-    if (block->identity.commit_index == target_index) return -4;
-
-    for (size_t i = 0; i < block->classify.cross_ref_count; ++i) {
-        if (block->classify.cross_refs[i] == target_index)
-            return 0; /* already linked */
-    }
-
-    if (block->classify.cross_ref_count >= FOSSIL_JELLYFISH_MAX_LINKS)
-        return -3;
-
-    block->classify.cross_refs[block->classify.cross_ref_count++] = target_index;
-
-    /* Timing update */
-    uint64_t now = get_time_microseconds();
-    uint64_t prev = block->time.updated_at ? block->time.updated_at : block->time.timestamp;
-    if (block->time.timestamp == 0) block->time.timestamp = now;
-    block->time.delta_ms = (uint32_t)((now - prev) / 1000ULL);
-    block->time.updated_at = now;
-
-    return 1;
-}
-
 /* ------------------------------ Git-Chain Ops ------------------------------ */
 
 fossil_ai_jellyfish_block_t *fossil_ai_jellyfish_add_commit(
