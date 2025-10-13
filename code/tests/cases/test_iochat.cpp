@@ -1,0 +1,178 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project: Fossil Logic
+ *
+ * This file is part of the Fossil Logic project, which aims to develop
+ * high-performance, cross-platform applications and libraries. The code
+ * contained herein is licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain
+ * a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ * Author: Michael Gene Brockus (Dreamer)
+ * Date: 04/05/2014
+ *
+ * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
+ * -----------------------------------------------------------------------------
+ */
+#include <fossil/pizza/framework.h>
+#include "fossil/ai/framework.h"
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * *
+// * Fossil Logic Test Utilities
+// * * * * * * * * * * * * * * * * * * * * * * * *
+// Setup steps for things like test fixtures and
+// mock objects are set here.
+// * * * * * * * * * * * * * * * * * * * * * * * *
+
+FOSSIL_TEST_SUITE(cpp_iochat_fixture);
+
+FOSSIL_SETUP(cpp_iochat_fixture) {
+    // Setup the test fixture
+}
+
+FOSSIL_TEARDOWN(cpp_iochat_fixture) {
+    // Teardown the test fixture
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * *
+// * Fossil Logic Test Cases
+// * * * * * * * * * * * * * * * * * * * * * * * *
+// The test cases below are provided as samples, inspired
+// by the Meson build system's approach of using test cases
+// as samples for library usage.
+// * * * * * * * * * * * * * * * * * * * * * * * *
+
+using fossil::ai::IOChat;
+
+FOSSIL_TEST_CASE(cpp_test_iochat_start_and_end_session) {
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
+
+    int start_result = IOChat::start("test_session", &chain);
+    ASSUME_ITS_EQUAL_I32(start_result, 0);
+
+    int end_result = IOChat::end(&chain);
+    ASSUME_ITS_EQUAL_I32(end_result, 0);
+}
+
+FOSSIL_TEST_CASE(cpp_test_iochat_respond_known_and_unknown) {
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
+
+    IOChat::start("chat", &chain);
+    IOChat::learn_response(&chain, "hi", "hello there!");
+
+    char output[64] = {0};
+    int found = IOChat::respond(&chain, "hi", output, sizeof(output));
+    ASSUME_ITS_EQUAL_I32(found, 0);
+    ASSUME_ITS_EQUAL_CSTR(output, "hello there!");
+
+    int not_found = IOChat::respond(&chain, "unknown", output, sizeof(output));
+    ASSUME_ITS_EQUAL_I32(not_found, -1);
+    ASSUME_ITS_TRUE(strstr(output, "not sure") != NULL);
+
+    IOChat::end(&chain);
+}
+
+FOSSIL_TEST_CASE(cpp_test_iochat_inject_system_message_and_immutable) {
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
+
+    int result = IOChat::inject_system_message(&chain, "System Ready");
+    ASSUME_ITS_EQUAL_I32(result, 0);
+
+    size_t idx = chain.count - 1;
+    ASSUME_ITS_TRUE(chain.commits[idx].attributes.immutable);
+    ASSUME_ITS_EQUAL_CSTR(chain.commits[idx].io.input, "[system]");
+    ASSUME_ITS_EQUAL_CSTR(chain.commits[idx].io.output, "System Ready");
+}
+
+FOSSIL_TEST_CASE(cpp_test_iochat_learn_response_and_turn_count) {
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
+
+    IOChat::learn_response(&chain, "foo", "bar");
+    IOChat::learn_response(&chain, "baz", "qux");
+
+    int turns = IOChat::turn_count(&chain);
+    ASSUME_ITS_EQUAL_I32(turns, 2);
+}
+
+FOSSIL_TEST_CASE(cpp_test_iochat_summarize_session_basic) {
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
+
+    IOChat::learn_response(&chain, "hello", "world");
+    IOChat::learn_response(&chain, "how are you", "fine");
+
+    char summary[256] = {0};
+    int result = IOChat::summarize_session(&chain, summary, sizeof(summary));
+    ASSUME_ITS_EQUAL_I32(result, 0);
+    ASSUME_ITS_TRUE(strstr(summary, "hello") != NULL);
+    ASSUME_ITS_TRUE(strstr(summary, "world") != NULL);
+    ASSUME_ITS_TRUE(strstr(summary, "how are you") != NULL);
+}
+
+FOSSIL_TEST_CASE(cpp_test_iochat_filter_recent_turns) {
+    fossil_ai_jellyfish_chain_t chain, filtered;
+    fossil_ai_jellyfish_init(&chain);
+    fossil_ai_jellyfish_init(&filtered);
+
+    IOChat::learn_response(&chain, "a", "1");
+    IOChat::learn_response(&chain, "b", "2");
+    IOChat::learn_response(&chain, "c", "3");
+
+    int result = IOChat::filter_recent(&chain, &filtered, 2);
+    ASSUME_ITS_EQUAL_I32(result, 0);
+    ASSUME_ITS_EQUAL_I32(filtered.count, 2);
+    ASSUME_ITS_EQUAL_CSTR(filtered.commits[0].io.input, "b");
+    ASSUME_ITS_EQUAL_CSTR(filtered.commits[1].io.input, "c");
+}
+
+FOSSIL_TEST_CASE(cpp_test_iochat_export_and_import_history) {
+    fossil_ai_jellyfish_chain_t chain, imported;
+    fossil_ai_jellyfish_init(&chain);
+    fossil_ai_jellyfish_init(&imported);
+
+    IOChat::learn_response(&chain, "x", "y");
+    IOChat::learn_response(&chain, "z", "w");
+
+    const char *filepath = "test_iochat_history.txt";
+    int export_result = IOChat::export_history(&chain, filepath);
+    ASSUME_ITS_EQUAL_I32(export_result, 0);
+
+    int import_result = IOChat::import_context(&imported, filepath);
+    ASSUME_ITS_EQUAL_I32(import_result, 0);
+
+    ASSUME_ITS_EQUAL_I32(imported.count, 2);
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[0].io.input, "x");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[0].io.output, "y");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[1].io.input, "z");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[1].io.output, "w");
+
+    remove(filepath);
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * *
+// * Fossil Logic Test Pool
+// * * * * * * * * * * * * * * * * * * * * * * * *
+FOSSIL_TEST_GROUP(cpp_iochat_tests) {
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_start_and_end_session);
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_respond_known_and_unknown);
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_inject_system_message_and_immutable);
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_learn_response_and_turn_count);
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_summarize_session_basic);
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_filter_recent_turns);
+    FOSSIL_TEST_ADD(cpp_iochat_fixture, cpp_test_iochat_export_and_import_history);
+
+    FOSSIL_TEST_REGISTER(cpp_iochat_fixture);
+} // end of tests
