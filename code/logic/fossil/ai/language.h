@@ -185,14 +185,260 @@ void fossil_lang_generate_variants(const char *input, char outputs[][256], size_
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <array>
 
 namespace fossil {
 
-namespace ai {
+    namespace ai {
 
+        
+        /**
+         * @brief High-level C++ wrapper for the Fossil language processing C API.
+         *
+         * Provides safer, RAII-friendly, STL-integrated helpers that delegate to the
+         * low-level fossil_lang_* C functions. Designed for light-weight usage with
+         * zero persistent heap allocations beyond returned STL containers.
+         *
+         * Thread-safety: All static functions are reentrant PROVIDED the underlying
+         * C implementations are reentrant. No internal static mutable state here.
+         */
+        class Language {
+        public:
+            // ---------------------------------------------------------------------
+            // Core compile-time constants mirroring C definitions
+            // ---------------------------------------------------------------------
+            static constexpr size_t TokenSize      = FOSSIL_JELLYFISH_TOKEN_SIZE;   ///< Size of each individual token buffer (chars).
+            static constexpr size_t MaxTokens      = FOSSIL_JELLYFISH_MAX_TOKENS;   ///< Maximum number of tokens produced by tokenizer.
+            static constexpr size_t PipelineBufLen = FOSSIL_LANG_PIPELINE_OUTPUT_SIZE; ///< Shared buffer size for summary/normalize/focus.
+            static constexpr size_t VariantBufSize = 256;                           ///< Fixed buffer length per generated variant.
 
+            /**
+             * @brief Enum mapping for truth alignment outcomes.
+             *
+             * Matches fossil_lang_align_truth return codes for type safety and clarity.
+             */
+            enum class TruthAlignment : int {
+                Contradiction = -1, ///< Input contradicts known chain knowledge.
+                Unknown       = 0,  ///< No decisive match / insufficient evidence.
+                Aligned       = 1   ///< Consistent with existing knowledge.
+            };
 
-} // namespace ai
+            /**
+             * @brief Configuration object for multi-stage language pipeline execution.
+             *
+             * Each flag toggles a feature inside fossil_lang_process. Defaults enable
+             * all stages. Convert to C struct via to_c().
+             */
+            struct PipelineConfig {
+                bool normalize      = true; ///< Perform slang/contraction normalization.
+                bool tokenize       = true; ///< Produce token sequence.
+                bool detect_emotion = true; ///< Compute coarse emotional valence.
+                bool detect_bias    = true; ///< Flag potential bias / exaggeration.
+                bool extract_focus  = true; ///< Extract salient focus term.
+                bool is_question    = true; ///< Identify interrogative form.
+                bool summarize      = true; ///< Produce short extractive summary.
+
+                /**
+                 * @brief Convert to underlying C API structure.
+                 */
+                fossil_lang_pipeline_t to_c() const {
+                    fossil_lang_pipeline_t p{
+                        normalize,
+                        tokenize,
+                        detect_emotion,
+                        detect_bias,
+                        extract_focus,
+                        is_question,
+                        summarize
+                    };
+                    return p;
+                }
+            };
+
+            /**
+             * @brief Result container for pipeline execution.
+             *
+             * Owns STL strings and vector of tokens translated from fossil_lang_result_t.
+             */
+            struct Result {
+                float emotion_score = 0.f;             ///< -1..+1 emotional valence.
+                bool  bias_detected = false;           ///< True if heuristic bias flagged.
+                bool  is_question   = false;           ///< True if input classified as question.
+                std::string focus;                     ///< Extracted focus word/phrase.
+                std::string summary;                   ///< Generated summary (may be truncated).
+                std::string normalized;                ///< Normalized form (if enabled).
+                std::vector<std::string> tokens;       ///< Token list (if enabled).
+
+                /**
+                 * @brief Translate from C struct into STL-friendly object.
+                 */
+                static Result from_c(const fossil_lang_result_t &cres) {
+                    Result r;
+                    r.emotion_score = cres.emotion_score;
+                    r.bias_detected = cres.bias_detected;
+                    r.is_question   = cres.is_question;
+                    r.focus         = cres.focus;
+                    r.summary       = cres.summary;
+                    r.normalized    = cres.normalized;
+                    r.tokens.reserve(cres.token_count);
+                    for (size_t i = 0; i < cres.token_count; ++i) {
+                        r.tokens.emplace_back(cres.tokens[i]);
+                    }
+                    return r;
+                }
+            };
+
+            /**
+             * @brief Tokenize text into lowercase normalized tokens.
+             * @return Vector of tokens (size <= MaxTokens).
+             */
+            static std::vector<std::string> tokenize(const std::string &text) {
+                char raw[MaxTokens][TokenSize] = {};
+                size_t count = fossil_lang_tokenize(text.c_str(), raw, MaxTokens);
+                std::vector<std::string> out;
+                out.reserve(count);
+                for (size_t i = 0; i < count; ++i) out.emplace_back(raw[i]);
+                return out;
+            }
+
+            /**
+             * @brief Check if text appears to be a question.
+             */
+            static bool isQuestion(const std::string &text) {
+                return fossil_lang_is_question(text.c_str());
+            }
+
+            /**
+             * @brief Estimate emotional polarity.
+             */
+            static float detectEmotion(const std::string &text) {
+                return fossil_lang_detect_emotion(text.c_str());
+            }
+
+            /**
+             * @brief Heuristic detection of bias / falsehood cues.
+             */
+            static bool detectBiasOrFalsehood(const std::string &text) {
+                return fossil_lang_detect_bias_or_falsehood(text.c_str()) != 0;
+            }
+
+            /**
+             * @brief Align statement with chain knowledge base.
+             */
+            static TruthAlignment alignTruth(const fossil_ai_jellyfish_chain_t *chain,
+                                            const std::string &text) {
+                return static_cast<TruthAlignment>(
+                    fossil_lang_align_truth(chain, text.c_str()));
+            }
+
+            /**
+             * @brief Simple bag-of-words similarity.
+             */
+            static float similarity(const std::string &a, const std::string &b) {
+                return fossil_lang_similarity(a.c_str(), b.c_str());
+            }
+
+            /**
+             * @brief Generate short summary (extractive).
+             */
+            static std::string summarize(const std::string &text) {
+                char buf[PipelineBufLen] = {};
+                fossil_lang_summarize(text.c_str(), buf, sizeof(buf));
+                return std::string(buf);
+            }
+
+            /**
+             * @brief Normalize slang / contractions.
+             */
+            static std::string normalize(const std::string &text) {
+                char buf[PipelineBufLen] = {};
+                fossil_lang_normalize(text.c_str(), buf, sizeof(buf));
+                return std::string(buf);
+            }
+
+            /**
+             * @brief Extract salient focus term/phrase.
+             */
+            static std::string extractFocus(const std::string &text) {
+                char buf[PipelineBufLen] = {};
+                fossil_lang_extract_focus(text.c_str(), buf, sizeof(buf));
+                return std::string(buf);
+            }
+
+            /**
+             * @brief Composite trustworthiness estimation.
+             */
+            static float estimateTrust(const fossil_ai_jellyfish_chain_t *chain,
+                                    const std::string &text) {
+                return fossil_lang_estimate_trust(chain, text.c_str());
+            }
+
+            /**
+             * @brief Emit trace diagnostic log.
+             */
+            static void traceLog(const std::string &category,
+                                const std::string &input,
+                                float score) {
+                fossil_lang_trace_log(category.c_str(), input.c_str(), score);
+            }
+
+            /**
+             * @brief Cosine similarity over embedding vectors.
+             * @throws std::invalid_argument size mismatch.
+             */
+            static float embeddingSimilarity(const std::vector<float> &a,
+                                            const std::vector<float> &b) {
+                if (a.size() != b.size())
+                    throw std::invalid_argument("embedding size mismatch");
+                return fossil_lang_embedding_similarity(a.data(), b.data(), a.size());
+            }
+
+            /**
+             * @brief Generate paraphrased / alternate phrasings.
+             * Stops early on first empty variant.
+             */
+            static std::vector<std::string> generateVariants(const std::string &text,
+                                                            size_t max_outputs = 8) {
+                if (max_outputs == 0) return {};
+                std::unique_ptr<char[]> flat(new char[max_outputs * VariantBufSize]());
+                auto at = [&](size_t i)->char* { return flat.get() + i * VariantBufSize; };
+                fossil_lang_generate_variants(text.c_str(),
+                                            reinterpret_cast<char (*)[VariantBufSize]>(flat.get()),
+                                            max_outputs);
+                std::vector<std::string> result;
+                for (size_t i = 0; i < max_outputs; ++i) {
+                    if (at(i)[0] == '\0') break;
+                    result.emplace_back(at(i));
+                }
+                return result;
+            }
+
+            /**
+             * @brief Run configurable multi-stage pipeline.
+             */
+            static Result process(const PipelineConfig &cfg,
+                                const std::string &text) {
+                fossil_lang_pipeline_t p = cfg.to_c();
+                fossil_lang_result_t cres{};
+                fossil_lang_process(&p, text.c_str(), &cres);
+                return Result::from_c(cres);
+            }
+
+            /**
+             * @brief Convenience minimal processing (normalize + tokenize).
+             */
+            static Result quickProcess(const std::string &text) {
+                PipelineConfig cfg;
+                cfg.detect_bias = false;
+                cfg.detect_emotion = false;
+                cfg.extract_focus = false;
+                cfg.is_question = false;
+                cfg.summarize = false;
+                return process(cfg, text);
+            }
+        };
+        
+    } // namespace ai
 
 } // namespace fossil
 
