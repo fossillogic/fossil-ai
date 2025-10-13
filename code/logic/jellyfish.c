@@ -64,7 +64,14 @@ static size_t fossil_jellyfish_strnlen_fallback(const char *s, size_t maxlen) {
 #ifndef FOSSIL_JELLYFISH_STRNCPY_FALLBACK_H
 #define FOSSIL_JELLYFISH_STRNCPY_FALLBACK_H
 #include <stddef.h>
-static char *fossil_jellyfish_strncpy(char *dst, const char *src, size_t n) {
+/* Provide an UNUSED attribute to suppress -Wunused-function when the macro
+ * redirection below is optimized away or not triggered. */
+#if defined(__GNUC__) || defined(__clang__)
+#define FOSSIL_JELLYFISH_ATTR_UNUSED __attribute__((unused))
+#else
+#define FOSSIL_JELLYFISH_ATTR_UNUSED
+#endif
+static FOSSIL_JELLYFISH_ATTR_UNUSED char *fossil_jellyfish_strncpy(char *dst, const char *src, size_t n) {
     if (!dst || n == 0) return dst;
     if (!src) { dst[0] = '\0'; return dst; }
     size_t i = 0;
