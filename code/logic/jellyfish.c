@@ -72,8 +72,10 @@ static char *fossil_jellyfish_strncpy(char *dst, const char *src, size_t n) {
     dst[i] = '\0';
     return dst;
 }
-/* Redirect local strncpy calls */
+/* Redirect local strncpy calls only if the system has not already defined it */
+#if !defined(strncpy)
 #define strncpy(d,s,n) fossil_jellyfish_strncpy((d),(s),(n))
+#endif
 #endif
 
 // ========================================================
