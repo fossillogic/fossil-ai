@@ -4024,9 +4024,9 @@ int fossil_ai_jellyfish_merge(fossil_ai_jellyfish_chain_t *chain,
     /* Parent order: target first, then source (like git merge) */
     uint8_t parents[2][FOSSIL_JELLYFISH_HASH_SIZE];
     memcpy(parents[0], tgt_head, FOSSIL_JELLYFISH_HASH_SIZE);
-    const uint8_t parents[2][FOSSIL_JELLYFISH_HASH_SIZE];
-    memcpy((uint8_t *)parents[0], tgt_head, FOSSIL_JELLYFISH_HASH_SIZE);
-    memcpy((uint8_t *)parents[1], src_head, FOSSIL_JELLYFISH_HASH_SIZE);
+    memcpy(parents[1], src_head, FOSSIL_JELLYFISH_HASH_SIZE);
+
+    char msg_buf[256];
     const char *final_msg = message;
     if (!final_msg || !final_msg[0]) {
         snprintf(msg_buf, sizeof(msg_buf),
@@ -4119,11 +4119,10 @@ int fossil_ai_jellyfish_rebase(fossil_ai_jellyfish_chain_t *chain,
     uint8_t parent[1][FOSSIL_JELLYFISH_HASH_SIZE];
     memcpy(parent[0], onto_head, FOSSIL_JELLYFISH_HASH_SIZE);
 
+    char msg[256];
     const char *src_msg = src_block->identity.commit_message[0] ?
                           src_block->identity.commit_message : "head";
-
-    /* Build commit message (truncate safely) */
-    char msg[256];
+    /* Safely build message with truncation to avoid overflow */
     int w = snprintf(msg, sizeof(msg), "rebase %s onto %s (src:",
                      chain->branches[b_src].name,
                      chain->branches[b_onto].name);
@@ -4137,8 +4136,13 @@ int fossil_ai_jellyfish_rebase(fossil_ai_jellyfish_chain_t *chain,
         memcpy(msg + used, src_msg, src_len);
         used += src_len;
         if (used < sizeof(msg) - 1) {
-            msg[used++] = ')';
+            if (used == sizeof(msg) - 1) {
+                /* no space for closing ')' */
+            } else {
+                msg[used++] = ')';
+            }
         } else {
+            /* Ensure room for null terminator */
             used = sizeof(msg) - 1;
         }
         msg[used] = '\0';
