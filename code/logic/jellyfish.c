@@ -1412,14 +1412,39 @@ int fossil_ai_jellyfish_audit(const fossil_ai_jellyfish_chain_t *chain) {
     if (!chain) return -1;
     int anomalies = 0;
 
-    /* Precompute list of valid commit hashes for quick parent existence tests */
+    /* Collect valid hashes + indices for duplicate / parent checks */
     uint8_t valid_hashes[FOSSIL_JELLYFISH_MAX_MEM][FOSSIL_JELLYFISH_HASH_SIZE];
+    size_t  valid_indices[FOSSIL_JELLYFISH_MAX_MEM];
     size_t  valid_count = 0;
     for (size_t i = 0; i < FOSSIL_JELLYFISH_MAX_MEM; ++i) {
         const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
         if (b->attributes.valid) {
             memcpy(valid_hashes[valid_count], b->identity.commit_hash, FOSSIL_JELLYFISH_HASH_SIZE);
+            valid_indices[valid_count] = i;
             valid_count++;
+        }
+    }
+
+    /* Detect duplicate commit hashes (content-address collision or duplicate IO when hash deterministic) */
+    for (size_t i = 0; i < valid_count; ++i) {
+        for (size_t j = 0; j < i; ++j) {
+            if (memcmp(valid_hashes[i], valid_hashes[j], FOSSIL_JELLYFISH_HASH_SIZE) == 0) {
+                anomalies++; /* count each additional duplicate once */
+                break;
+            }
+        }
+    }
+
+    /* Detect duplicate (input,output) pairs even if hashes differ (e.g., non-deterministic hash) */
+    for (size_t i = 0; i < valid_count; ++i) {
+        const fossil_ai_jellyfish_block_t *bi = &chain->commits[ valid_indices[i] ];
+        for (size_t j = 0; j < i; ++j) {
+            const fossil_ai_jellyfish_block_t *bj = &chain->commits[ valid_indices[j] ];
+            if (strcmp(bi->io.input, bj->io.input) == 0 &&
+                strcmp(bi->io.output, bj->io.output) == 0) {
+                anomalies++;
+                break;
+            }
         }
     }
 
@@ -1427,24 +1452,20 @@ int fossil_ai_jellyfish_audit(const fossil_ai_jellyfish_chain_t *chain) {
         const fossil_ai_jellyfish_block_t *b = &chain->commits[idx];
         if (!b->attributes.valid) continue;
 
-        /* 1. Index consistency */
         if (b->identity.commit_index != idx)
             anomalies++;
 
-        /* 2. Hash recomputation (content based) */
         uint8_t recomputed[FOSSIL_JELLYFISH_HASH_SIZE];
         fossil_ai_jellyfish_hash(b->io.input, b->io.output, recomputed);
         if (memcmp(recomputed, b->identity.commit_hash, FOSSIL_JELLYFISH_HASH_SIZE) != 0)
             anomalies++;
 
-        /* Zero hash disallowed */
         int all_zero = 1;
         for (size_t k = 0; k < FOSSIL_JELLYFISH_HASH_SIZE; ++k)
             if (b->identity.commit_hash[k] != 0) { all_zero = 0; break; }
         if (all_zero)
             anomalies++;
 
-        /* 3. Parent constraints */
         if (b->identity.parent_count > 4)
             anomalies++;
         for (size_t p = 0; p < b->identity.parent_count && p < 4; ++p) {
@@ -1459,36 +1480,33 @@ int fossil_ai_jellyfish_audit(const fossil_ai_jellyfish_chain_t *chain) {
                 anomalies++;
         }
 
-        /* 4. Merge flag consistency */
         if ((b->identity.parent_count >= 2 && !b->identity.is_merge_commit) ||
             (b->identity.parent_count < 2 && b->identity.is_merge_commit))
             anomalies++;
 
-        /* 5. Length & token bounds */
-        size_t real_in_len = strnlen(b->io.input, FOSSIL_JELLYFISH_INPUT_SIZE);
+        size_t real_in_len  = strnlen(b->io.input,  FOSSIL_JELLYFISH_INPUT_SIZE);
         size_t real_out_len = strnlen(b->io.output, FOSSIL_JELLYFISH_OUTPUT_SIZE);
-        if (real_in_len != b->io.input_len) anomalies++;
+        if (real_in_len  != b->io.input_len)  anomalies++;
         if (real_out_len != b->io.output_len) anomalies++;
-        if (b->io.input_token_count > FOSSIL_JELLYFISH_MAX_TOKENS) anomalies++;
+        if (b->io.input_token_count  > FOSSIL_JELLYFISH_MAX_TOKENS) anomalies++;
         if (b->io.output_token_count > FOSSIL_JELLYFISH_MAX_TOKENS) anomalies++;
 
-        /* 6. Confidence range */
         if (b->attributes.confidence < 0.0f || b->attributes.confidence > 1.0f)
             anomalies++;
 
-        /* 7. Trusted flag heuristic: signed commit type without signature */
         if (b->block_type == JELLY_COMMIT_SIGNED && b->identity.signature_len == 0)
             anomalies++;
 
-        /* 8. Merge type sanity */
         if (b->block_type == JELLY_COMMIT_MERGE && b->identity.parent_count < 2)
             anomalies++;
     }
 
-    /* 9. Branch head validity */
     for (size_t br = 0; br < chain->branch_count; ++br) {
         const uint8_t *head = chain->branches[br].head_hash;
-        if (memcmp(head, "\0\0\0\0\0\0\0\0", 8) == 0) continue; /* tolerate zeroed */
+        int all_zero = 1;
+        for (size_t k = 0; k < FOSSIL_JELLYFISH_HASH_SIZE; ++k)
+            if (head[k]) { all_zero = 0; break; }
+        if (all_zero) continue;
         int found = 0;
         for (size_t vh = 0; vh < valid_count; ++vh) {
             if (memcmp(valid_hashes[vh], head, FOSSIL_JELLYFISH_HASH_SIZE) == 0) { found = 1; break; }
@@ -1497,7 +1515,6 @@ int fossil_ai_jellyfish_audit(const fossil_ai_jellyfish_chain_t *chain) {
             anomalies++;
     }
 
-    /* 10. Count consistency: chain->count should be >= highest valid index+1 (soft check) */
     size_t highest_valid = 0;
     for (size_t i = 0; i < FOSSIL_JELLYFISH_MAX_MEM; ++i)
         if (chain->commits[i].attributes.valid && i + 1 > highest_valid)
