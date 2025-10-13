@@ -44,7 +44,7 @@ extern "C"
  * @param context_name Optional name for the context/session.
  * @return 0 on success, non-zero on failure.
  */
-int fossil_io_chat_start(const char *context_name, fossil_jellyfish_chain_t *chain);
+int fossil_io_chat_start(const char *context_name, fossil_ai_jellyfish_chain_t *chain);
 
 /**
  * @brief Processes a user input and generates a chatbot response.
@@ -57,7 +57,7 @@ int fossil_io_chat_start(const char *context_name, fossil_jellyfish_chain_t *cha
  * @param size    Size of output buffer.
  * @return        0 if response found, -1 if unknown.
  */
-int fossil_io_chat_respond(fossil_jellyfish_chain_t *chain, const char *input, char *output, size_t size);
+int fossil_io_chat_respond(fossil_ai_jellyfish_chain_t *chain, const char *input, char *output, size_t size);
 
 /**
  * @brief Ends the current conversation session and performs cleanup.
@@ -66,7 +66,7 @@ int fossil_io_chat_respond(fossil_jellyfish_chain_t *chain, const char *input, c
  *
  * @return 0 on success.
  */
-int fossil_io_chat_end(fossil_jellyfish_chain_t *chain);
+int fossil_io_chat_end(fossil_ai_jellyfish_chain_t *chain);
 
 /**
  * @brief Injects a system message into the chain (e.g. "Hello", "System Ready").
@@ -77,7 +77,7 @@ int fossil_io_chat_end(fossil_jellyfish_chain_t *chain);
  * @param message System-level message.
  * @return 0 on success.
  */
-int fossil_io_chat_inject_system_message(fossil_jellyfish_chain_t *chain, const char *message);
+int fossil_io_chat_inject_system_message(fossil_ai_jellyfish_chain_t *chain, const char *message);
 
 /**
  * @brief Appends a chatbot-generated response to the chain memory.
@@ -89,7 +89,7 @@ int fossil_io_chat_inject_system_message(fossil_jellyfish_chain_t *chain, const 
  * @param output  Chatbot response to learn.
  * @return 0 on success.
  */
-int fossil_io_chat_learn_response(fossil_jellyfish_chain_t *chain, const char *input, const char *output);
+int fossil_io_chat_learn_response(fossil_ai_jellyfish_chain_t *chain, const char *input, const char *output);
 
 /**
  * @brief Returns the number of conversational turns remembered.
@@ -97,7 +97,7 @@ int fossil_io_chat_learn_response(fossil_jellyfish_chain_t *chain, const char *i
  * @param chain Jellyfish chain.
  * @return Number of user-input/output pairs.
  */
-int fossil_io_chat_turn_count(const fossil_jellyfish_chain_t *chain);
+int fossil_io_chat_turn_count(const fossil_ai_jellyfish_chain_t *chain);
 
 /**
  * @brief Summarizes the session into a concise text form.
@@ -109,7 +109,7 @@ int fossil_io_chat_turn_count(const fossil_jellyfish_chain_t *chain);
  * @param size      Size of the output buffer.
  * @return 0 on success, -1 if summary couldn't be generated.
  */
-int fossil_io_chat_summarize_session(const fossil_jellyfish_chain_t *chain, char *summary, size_t size);
+int fossil_io_chat_summarize_session(const fossil_ai_jellyfish_chain_t *chain, char *summary, size_t size);
 
 /**
  * @brief Filters the most recent N turns into a temporary sub-chain.
@@ -121,7 +121,7 @@ int fossil_io_chat_summarize_session(const fossil_jellyfish_chain_t *chain, char
  * @param turn_count Number of recent user turns to include.
  * @return 0 on success.
  */
-int fossil_io_chat_filter_recent(const fossil_jellyfish_chain_t *chain, fossil_jellyfish_chain_t *out_chain, int turn_count);
+int fossil_io_chat_filter_recent(const fossil_ai_jellyfish_chain_t *chain, fossil_ai_jellyfish_chain_t *out_chain, int turn_count);
 
 /**
  * @brief Exports the current conversation history to a text file.
@@ -130,7 +130,7 @@ int fossil_io_chat_filter_recent(const fossil_jellyfish_chain_t *chain, fossil_j
  * @param filepath  Destination path for output.
  * @return 0 on success, -1 on error.
  */
-int fossil_io_chat_export_history(const fossil_jellyfish_chain_t *chain, const char *filepath);
+int fossil_io_chat_export_history(const fossil_ai_jellyfish_chain_t *chain, const char *filepath);
 
 /**
  * @brief Imports a context file and loads it into the chain.
@@ -141,7 +141,7 @@ int fossil_io_chat_export_history(const fossil_jellyfish_chain_t *chain, const c
  * @param filepath  Source path of saved context.
  * @return 0 on success, -1 if parsing fails.
  */
-int fossil_io_chat_import_context(fossil_jellyfish_chain_t *chain, const char *filepath);
+int fossil_io_chat_import_context(fossil_ai_jellyfish_chain_t *chain, const char *filepath);
 
 #ifdef __cplusplus
 }
@@ -163,7 +163,7 @@ namespace ai {
          * @param context_name Optional name for the context/session.
          * @return 0 on success, non-zero on failure.
          */
-        static int start(const char *context_name, fossil_jellyfish_chain_t *chain) {
+        static int start(const char *context_name, fossil_ai_jellyfish_chain_t *chain) {
             return fossil_io_chat_start(context_name, chain);
         }
 
@@ -177,7 +177,7 @@ namespace ai {
          * @param size Size of output buffer.
          * @return 0 if response found, -1 if unknown.
          */
-        static int respond(fossil_jellyfish_chain_t *chain, const char *input, char *output, size_t size) {
+        static int respond(fossil_ai_jellyfish_chain_t *chain, const char *input, char *output, size_t size) {
             return fossil_io_chat_respond(chain, input, output, size);
         }
 
@@ -188,7 +188,7 @@ namespace ai {
          * 
          * @return 0 on success.
          */
-        static int end(fossil_jellyfish_chain_t *chain) {
+        static int end(fossil_ai_jellyfish_chain_t *chain) {
             return fossil_io_chat_end(chain);
         }
 
@@ -200,7 +200,7 @@ namespace ai {
          * @param message System-level message.
          * @return 0 on success.
          */
-        static int inject_system_message(fossil_jellyfish_chain_t *chain, const char *message) {
+        static int inject_system_message(fossil_ai_jellyfish_chain_t *chain, const char *message) {
             return fossil_io_chat_inject_system_message(chain, message);
         }
 
@@ -213,7 +213,7 @@ namespace ai {
          * @param output Chatbot output string.
          * @return 0 on success, -1 on error.
          */
-        static int learn_response(fossil_jellyfish_chain_t *chain, const char *input, const char *output) {
+        static int learn_response(fossil_ai_jellyfish_chain_t *chain, const char *input, const char *output) {
             return fossil_io_chat_learn_response(chain, input, output);
         }
 
@@ -223,7 +223,7 @@ namespace ai {
          * @param chain Jellyfish chain.
          * @return Number of user-input/output pairs.
          */
-        static int turn_count(const fossil_jellyfish_chain_t *chain) {
+        static int turn_count(const fossil_ai_jellyfish_chain_t *chain) {
             return fossil_io_chat_turn_count(chain);
         }
 
@@ -237,7 +237,7 @@ namespace ai {
          * @param size Size of the output buffer.
          * @return 0 on success, -1 if summary couldn't be generated.
          */
-        static int summarize_session(const fossil_jellyfish_chain_t *chain, char *summary, size_t size) {
+        static int summarize_session(const fossil_ai_jellyfish_chain_t *chain, char *summary, size_t size) {
             return fossil_io_chat_summarize_session(chain, summary, size);
         }
 
@@ -251,7 +251,7 @@ namespace ai {
          * @param turn_count Number of recent user turns to include.
          * @return 0 on success.
          */
-        static int filter_recent(const fossil_jellyfish_chain_t *chain, fossil_jellyfish_chain_t *out_chain, int turn_count) {
+        static int filter_recent(const fossil_ai_jellyfish_chain_t *chain, fossil_ai_jellyfish_chain_t *out_chain, int turn_count) {
             return fossil_io_chat_filter_recent(chain, out_chain, turn_count);
         }
 
@@ -262,7 +262,7 @@ namespace ai {
          * @param filepath Destination path for output.
          * @return 0 on success, -1 on error.
          */
-        static int export_history(const fossil_jellyfish_chain_t *chain, const char *filepath) {
+        static int export_history(const fossil_ai_jellyfish_chain_t *chain, const char *filepath) {
             return fossil_io_chat_export_history(chain, filepath);
         }
 
@@ -275,7 +275,7 @@ namespace ai {
          * @param filepath Source path of saved context.
          * @return 0 on success, -1 if parsing fails.
          */
-        static int import_context(fossil_jellyfish_chain_t *chain, const char *filepath) {
+        static int import_context(fossil_ai_jellyfish_chain_t *chain, const char *filepath) {
             return fossil_io_chat_import_context(chain, filepath);
         }
     };
