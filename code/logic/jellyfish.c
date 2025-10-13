@@ -4046,7 +4046,7 @@ int fossil_ai_jellyfish_merge(fossil_ai_jellyfish_chain_t *chain,
                                        merge_input,
                                        merge_output,
                                        JELLY_COMMIT_MERGE,
-                                       parents,
+                                       (const uint8_t (*)[FOSSIL_JELLYFISH_HASH_SIZE])parents,
                                        2,
                                        final_msg);
     if (!merge_commit) return -7;
@@ -4160,7 +4160,7 @@ int fossil_ai_jellyfish_rebase(fossil_ai_jellyfish_chain_t *chain,
                                        input,
                                        output,
                                        JELLY_COMMIT_REBASE,
-                                       parent,
+                                       (const uint8_t (*)[FOSSIL_JELLYFISH_HASH_SIZE])parent,
                                        1,
                                        msg);
     if (!rebased) return -7;
@@ -4236,7 +4236,7 @@ int fossil_ai_jellyfish_cherry_pick(fossil_ai_jellyfish_chain_t *chain, const ui
                                        src->io.input,
                                        src->io.output,
                                        JELLY_COMMIT_CHERRY_PICK,
-                                       parent_count ? parents : NULL,
+                                       parent_count ? (const uint8_t (*)[FOSSIL_JELLYFISH_HASH_SIZE])parents : NULL,
                                        parent_count,
                                        msg);
     if (!newb) return -4;
