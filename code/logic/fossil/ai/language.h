@@ -27,7 +27,7 @@
 
 #include "jellyfish.h"
 
-#define FOSSIL_LANG_PIPELINE_OUTPUT_SIZE 1024
+#define fossil_ai_lang_PIPELINE_OUTPUT_SIZE 1024
 
 #ifndef FOSSIL_JELLYFISH_TOKEN_SIZE
 #define FOSSIL_JELLYFISH_TOKEN_SIZE 32
@@ -50,18 +50,18 @@ typedef struct {
     bool extract_focus;
     bool is_question;
     bool summarize;
-} fossil_lang_pipeline_t;
+} fossil_ai_lang_pipeline_t;
 
 typedef struct {
     float emotion_score;
     bool bias_detected;
     bool is_question;
     char focus[64];
-    char summary[FOSSIL_LANG_PIPELINE_OUTPUT_SIZE];
-    char normalized[FOSSIL_LANG_PIPELINE_OUTPUT_SIZE];
+    char summary[fossil_ai_lang_PIPELINE_OUTPUT_SIZE];
+    char normalized[fossil_ai_lang_PIPELINE_OUTPUT_SIZE];
     char tokens[64][FOSSIL_JELLYFISH_TOKEN_SIZE];
     size_t token_count;
-} fossil_lang_result_t;
+} fossil_ai_lang_result_t;
 
 // *****************************************************************************
 // Function prototypes
@@ -71,25 +71,25 @@ typedef struct {
  * Tokenizes input into normalized lowercase tokens.
  * Removes punctuation and collapses whitespace.
  */
-size_t fossil_lang_tokenize(const char *input, char tokens[][FOSSIL_JELLYFISH_TOKEN_SIZE], size_t max_tokens);
+size_t fossil_ai_lang_tokenize(const char *input, char tokens[][FOSSIL_JELLYFISH_TOKEN_SIZE], size_t max_tokens);
 
 /**
  * Determines whether a given input is a question.
  * Looks for terminal punctuation and question phrases.
  */
-bool fossil_lang_is_question(const char *input);
+bool fossil_ai_lang_is_question(const char *input);
 
 /**
  * Guesses the emotional tone of a sentence.
  * Returns a score (-1.0 sad → 0.0 neutral → +1.0 positive).
  */
-float fossil_lang_detect_emotion(const char *input);
+float fossil_ai_lang_detect_emotion(const char *input);
 
 /**
  * Attempts to identify bias, exaggeration, or unverified claims in input.
  * Returns 1 if detected, 0 if not.
  */
-int fossil_lang_detect_bias_or_falsehood(const char *input);
+int fossil_ai_lang_detect_bias_or_falsehood(const char *input);
 
 /**
  * Performs truth alignment by comparing input to known chain knowledge.
@@ -98,87 +98,87 @@ int fossil_lang_detect_bias_or_falsehood(const char *input);
  *   0  → unknown
  *  -1  → contradiction detected
  */
-int fossil_lang_align_truth(const fossil_ai_jellyfish_chain_t *chain, const char *input);
+int fossil_ai_lang_align_truth(const fossil_ai_jellyfish_chain_t *chain, const char *input);
 
 /**
  * Computes semantic similarity between two input strings.
  * Returns a float between 0.0 (no match) to 1.0 (identical meaning).
  */
-float fossil_lang_similarity(const char *a, const char *b);
+float fossil_ai_lang_similarity(const char *a, const char *b);
 
 /**
  * Generates a compressed summary of the input string.
  * Result written to `out`, which must be preallocated.
  */
-void fossil_lang_summarize(const char *input, char *out, size_t out_size);
+void fossil_ai_lang_summarize(const char *input, char *out, size_t out_size);
 
 /**
  * Attempts to normalize slang, contractions, or informal expressions.
  * Output is written to `out`, which must be preallocated.
  */
-void fossil_lang_normalize(const char *input, char *out, size_t out_size);
+void fossil_ai_lang_normalize(const char *input, char *out, size_t out_size);
 
 /**
  * Extracts the most meaningful phrase from input for matching.
  * Good for chaining to Jellyfish reasoning.
  */
-void fossil_lang_extract_focus(const char *input, char *out, size_t out_size);
+void fossil_ai_lang_extract_focus(const char *input, char *out, size_t out_size);
 
 /**
  * Estimates trustworthiness of the input text based on
  * structure, word choice, exaggeration, and alignment.
  * Score is in [0.0, 1.0].
  */
-float fossil_lang_estimate_trust(const fossil_ai_jellyfish_chain_t *chain, const char *input);
+float fossil_ai_lang_estimate_trust(const fossil_ai_jellyfish_chain_t *chain, const char *input);
 
 /**
  * Replace slang and contractions with formal equivalents.
  * This is a fixed-rule version (extendable).
  */
-void fossil_lang_normalize(const char *input, char *out, size_t out_size);
+void fossil_ai_lang_normalize(const char *input, char *out, size_t out_size);
 
 /**
  * Extracts key content from the first few meaningful tokens.
  * Simple lead-based summarization.
  */
-void fossil_lang_summarize(const char *input, char *out, size_t out_size);
+void fossil_ai_lang_summarize(const char *input, char *out, size_t out_size);
 
 /**
  * Extracts a "focus word" — usually a noun or key concept — from the input.
  * Current version uses simple heuristics and common stopwords.
  */
-void fossil_lang_extract_focus(const char *input, char *out, size_t out_size);
+void fossil_ai_lang_extract_focus(const char *input, char *out, size_t out_size);
 
 /**
  * Simple bag-of-words overlap similarity between two strings.
  * Returns a float between 0.0 (no overlap) and 1.0 (identical sets).
  */
-float fossil_lang_similarity(const char *a, const char *b);
+float fossil_ai_lang_similarity(const char *a, const char *b);
 
 /**
  * Processes input through a pipeline of NLP tasks.
  * Each task can be enabled/disabled via the pipeline configuration.
  */
-void fossil_lang_process(const fossil_lang_pipeline_t *pipe, const char *input, fossil_lang_result_t *out);
+void fossil_ai_lang_process(const fossil_ai_lang_pipeline_t *pipe, const char *input, fossil_ai_lang_result_t *out);
 
 /**
  * Logs a trace message for NLP processing.
  * Useful for debugging and performance analysis.
  */
-void fossil_lang_trace_log(const char *category, const char *input, float score);
+void fossil_ai_lang_trace_log(const char *category, const char *input, float score);
 
 /**
  * Computes cosine similarity between two embedding vectors.
  * Returns a float between 0.0 (orthogonal) and 1.0 (identical).
  */
-float fossil_lang_embedding_similarity(const float *vec_a, const float *vec_b, size_t len);
+float fossil_ai_lang_embedding_similarity(const float *vec_a, const float *vec_b, size_t len);
 
 /**
  * Generates alternative phrasings for a given input.
  * Useful for expanding search queries or generating variants.
  * Outputs are written to `outputs`, which must be preallocated.
  */
-void fossil_lang_generate_variants(const char *input, char outputs[][256], size_t max_outputs);
+void fossil_ai_lang_generate_variants(const char *input, char outputs[][256], size_t max_outputs);
 
 #ifdef __cplusplus
 }
@@ -196,7 +196,7 @@ namespace fossil {
          * @brief High-level C++ wrapper for the Fossil language processing C API.
          *
          * Provides safer, RAII-friendly, STL-integrated helpers that delegate to the
-         * low-level fossil_lang_* C functions. Designed for light-weight usage with
+         * low-level fossil_ai_lang_* C functions. Designed for light-weight usage with
          * zero persistent heap allocations beyond returned STL containers.
          *
          * Thread-safety: All static functions are reentrant PROVIDED the underlying
@@ -209,13 +209,13 @@ namespace fossil {
             // ---------------------------------------------------------------------
             static constexpr size_t TokenSize      = FOSSIL_JELLYFISH_TOKEN_SIZE;   ///< Size of each individual token buffer (chars).
             static constexpr size_t MaxTokens      = FOSSIL_JELLYFISH_MAX_TOKENS;   ///< Maximum number of tokens produced by tokenizer.
-            static constexpr size_t PipelineBufLen = FOSSIL_LANG_PIPELINE_OUTPUT_SIZE; ///< Shared buffer size for summary/normalize/focus.
+            static constexpr size_t PipelineBufLen = fossil_ai_lang_PIPELINE_OUTPUT_SIZE; ///< Shared buffer size for summary/normalize/focus.
             static constexpr size_t VariantBufSize = 256;                           ///< Fixed buffer length per generated variant.
 
             /**
              * @brief Enum mapping for truth alignment outcomes.
              *
-             * Matches fossil_lang_align_truth return codes for type safety and clarity.
+             * Matches fossil_ai_lang_align_truth return codes for type safety and clarity.
              */
             enum class TruthAlignment : int {
                 Contradiction = -1, ///< Input contradicts known chain knowledge.
@@ -226,7 +226,7 @@ namespace fossil {
             /**
              * @brief Configuration object for multi-stage language pipeline execution.
              *
-             * Each flag toggles a feature inside fossil_lang_process. Defaults enable
+             * Each flag toggles a feature inside fossil_ai_lang_process. Defaults enable
              * all stages. Convert to C struct via to_c().
              */
             struct PipelineConfig {
@@ -241,8 +241,8 @@ namespace fossil {
                 /**
                  * @brief Convert to underlying C API structure.
                  */
-                fossil_lang_pipeline_t to_c() const {
-                    fossil_lang_pipeline_t p{
+                fossil_ai_lang_pipeline_t to_c() const {
+                    fossil_ai_lang_pipeline_t p{
                         normalize,
                         tokenize,
                         detect_emotion,
@@ -258,7 +258,7 @@ namespace fossil {
             /**
              * @brief Result container for pipeline execution.
              *
-             * Owns STL strings and vector of tokens translated from fossil_lang_result_t.
+             * Owns STL strings and vector of tokens translated from fossil_ai_lang_result_t.
              */
             struct Result {
                 float emotion_score = 0.f;             ///< -1..+1 emotional valence.
@@ -272,7 +272,7 @@ namespace fossil {
                 /**
                  * @brief Translate from C struct into STL-friendly object.
                  */
-                static Result from_c(const fossil_lang_result_t &cres) {
+                static Result from_c(const fossil_ai_lang_result_t &cres) {
                     Result r;
                     r.emotion_score = cres.emotion_score;
                     r.bias_detected = cres.bias_detected;
@@ -294,7 +294,7 @@ namespace fossil {
              */
             static std::vector<std::string> tokenize(const std::string &text) {
                 char raw[MaxTokens][TokenSize] = {};
-                size_t count = fossil_lang_tokenize(text.c_str(), raw, MaxTokens);
+                size_t count = fossil_ai_lang_tokenize(text.c_str(), raw, MaxTokens);
                 std::vector<std::string> out;
                 out.reserve(count);
                 for (size_t i = 0; i < count; ++i) out.emplace_back(raw[i]);
@@ -305,21 +305,21 @@ namespace fossil {
              * @brief Check if text appears to be a question.
              */
             static bool isQuestion(const std::string &text) {
-                return fossil_lang_is_question(text.c_str());
+                return fossil_ai_lang_is_question(text.c_str());
             }
 
             /**
              * @brief Estimate emotional polarity.
              */
             static float detectEmotion(const std::string &text) {
-                return fossil_lang_detect_emotion(text.c_str());
+                return fossil_ai_lang_detect_emotion(text.c_str());
             }
 
             /**
              * @brief Heuristic detection of bias / falsehood cues.
              */
             static bool detectBiasOrFalsehood(const std::string &text) {
-                return fossil_lang_detect_bias_or_falsehood(text.c_str()) != 0;
+                return fossil_ai_lang_detect_bias_or_falsehood(text.c_str()) != 0;
             }
 
             /**
@@ -328,14 +328,14 @@ namespace fossil {
             static TruthAlignment alignTruth(const fossil_ai_jellyfish_chain_t *chain,
                                             const std::string &text) {
                 return static_cast<TruthAlignment>(
-                    fossil_lang_align_truth(chain, text.c_str()));
+                    fossil_ai_lang_align_truth(chain, text.c_str()));
             }
 
             /**
              * @brief Simple bag-of-words similarity.
              */
             static float similarity(const std::string &a, const std::string &b) {
-                return fossil_lang_similarity(a.c_str(), b.c_str());
+                return fossil_ai_lang_similarity(a.c_str(), b.c_str());
             }
 
             /**
@@ -343,7 +343,7 @@ namespace fossil {
              */
             static std::string summarize(const std::string &text) {
                 char buf[PipelineBufLen] = {};
-                fossil_lang_summarize(text.c_str(), buf, sizeof(buf));
+                fossil_ai_lang_summarize(text.c_str(), buf, sizeof(buf));
                 return std::string(buf);
             }
 
@@ -352,7 +352,7 @@ namespace fossil {
              */
             static std::string normalize(const std::string &text) {
                 char buf[PipelineBufLen] = {};
-                fossil_lang_normalize(text.c_str(), buf, sizeof(buf));
+                fossil_ai_lang_normalize(text.c_str(), buf, sizeof(buf));
                 return std::string(buf);
             }
 
@@ -361,7 +361,7 @@ namespace fossil {
              */
             static std::string extractFocus(const std::string &text) {
                 char buf[PipelineBufLen] = {};
-                fossil_lang_extract_focus(text.c_str(), buf, sizeof(buf));
+                fossil_ai_lang_extract_focus(text.c_str(), buf, sizeof(buf));
                 return std::string(buf);
             }
 
@@ -370,7 +370,7 @@ namespace fossil {
              */
             static float estimateTrust(const fossil_ai_jellyfish_chain_t *chain,
                                     const std::string &text) {
-                return fossil_lang_estimate_trust(chain, text.c_str());
+                return fossil_ai_lang_estimate_trust(chain, text.c_str());
             }
 
             /**
@@ -379,7 +379,7 @@ namespace fossil {
             static void traceLog(const std::string &category,
                                 const std::string &input,
                                 float score) {
-                fossil_lang_trace_log(category.c_str(), input.c_str(), score);
+                fossil_ai_lang_trace_log(category.c_str(), input.c_str(), score);
             }
 
             /**
@@ -390,7 +390,7 @@ namespace fossil {
                                             const std::vector<float> &b) {
                 if (a.size() != b.size())
                     throw std::invalid_argument("embedding size mismatch");
-                return fossil_lang_embedding_similarity(a.data(), b.data(), a.size());
+                return fossil_ai_lang_embedding_similarity(a.data(), b.data(), a.size());
             }
 
             /**
@@ -402,7 +402,7 @@ namespace fossil {
                 if (max_outputs == 0) return {};
                 std::unique_ptr<char[]> flat(new char[max_outputs * VariantBufSize]());
                 auto at = [&](size_t i)->char* { return flat.get() + i * VariantBufSize; };
-                fossil_lang_generate_variants(text.c_str(),
+                fossil_ai_lang_generate_variants(text.c_str(),
                                             reinterpret_cast<char (*)[VariantBufSize]>(flat.get()),
                                             max_outputs);
                 std::vector<std::string> result;
@@ -418,9 +418,9 @@ namespace fossil {
              */
             static Result process(const PipelineConfig &cfg,
                                 const std::string &text) {
-                fossil_lang_pipeline_t p = cfg.to_c();
-                fossil_lang_result_t cres{};
-                fossil_lang_process(&p, text.c_str(), &cres);
+                fossil_ai_lang_pipeline_t p = cfg.to_c();
+                fossil_ai_lang_result_t cres{};
+                fossil_ai_lang_process(&p, text.c_str(), &cres);
                 return Result::from_c(cres);
             }
 

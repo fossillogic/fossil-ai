@@ -111,7 +111,7 @@ static void record_system_block(fossil_ai_jellyfish_chain_t *chain, const char *
 
 // --- API Functions ---
 
-int fossil_io_chat_start(const char *context_name, fossil_ai_jellyfish_chain_t *chain) {
+int fossil_ai_iochat_start(const char *context_name, fossil_ai_jellyfish_chain_t *chain) {
     if (context_name && strlen(context_name) < sizeof(current_context_name)) {
         strncpy(current_context_name, context_name, sizeof(current_context_name) - 1);
     } else {
@@ -122,7 +122,7 @@ int fossil_io_chat_start(const char *context_name, fossil_ai_jellyfish_chain_t *
     session_id = (uint64_t)session_start_time;
 
     if (open_session_log(session_id) != 0) {
-        fprintf(stderr, "[fossil_io_chat] Warning: Could not open session log file.\n");
+        fprintf(stderr, "[fossil_ai_iochat] Warning: Could not open session log file.\n");
     }
 
     char ts[32];
@@ -146,7 +146,7 @@ int fossil_io_chat_start(const char *context_name, fossil_ai_jellyfish_chain_t *
     return 0;
 }
 
-int fossil_io_chat_respond(fossil_ai_jellyfish_chain_t *chain, const char *input, char *output, size_t size) {
+int fossil_ai_iochat_respond(fossil_ai_jellyfish_chain_t *chain, const char *input, char *output, size_t size) {
     if (!chain || !input || !output || size == 0) return -1;
 
     float confidence = 0.0f;
@@ -188,7 +188,7 @@ int fossil_io_chat_respond(fossil_ai_jellyfish_chain_t *chain, const char *input
     }
 }
 
-int fossil_io_chat_end(fossil_ai_jellyfish_chain_t *chain) {
+int fossil_ai_iochat_end(fossil_ai_jellyfish_chain_t *chain) {
     time_t now = time(NULL);
     double duration = difftime(now, session_start_time);
 
@@ -220,13 +220,13 @@ int fossil_io_chat_end(fossil_ai_jellyfish_chain_t *chain) {
     return 0;
 }
 
-int fossil_io_chat_inject_system_message(fossil_ai_jellyfish_chain_t *chain, const char *message) {
+int fossil_ai_iochat_inject_system_message(fossil_ai_jellyfish_chain_t *chain, const char *message) {
     if (!chain || !message || strlen(message) == 0) {
         return -1;
     }
 
     if (chain->count >= FOSSIL_JELLYFISH_MAX_MEM) {
-        fprintf(stderr, "[fossil_io_chat] Chain memory full, cannot inject system message.\n");
+        fprintf(stderr, "[fossil_ai_iochat] Chain memory full, cannot inject system message.\n");
         return -1;
     }
 
@@ -240,36 +240,36 @@ int fossil_io_chat_inject_system_message(fossil_ai_jellyfish_chain_t *chain, con
     }
 
     log_hashed_event("[inject-system]", "[system]", message);
-    printf("[fossil_io_chat] Injected system message: \"%s\"\n", message);
+    printf("[fossil_ai_iochat] Injected system message: \"%s\"\n", message);
 
     return 0;
 }
 
-int fossil_io_chat_learn_response(fossil_ai_jellyfish_chain_t *chain, const char *input, const char *output) {
+int fossil_ai_iochat_learn_response(fossil_ai_jellyfish_chain_t *chain, const char *input, const char *output) {
     if (!chain || !input || !output || strlen(input) == 0 || strlen(output) == 0) {
         return -1;
     }
 
     if (chain->count >= FOSSIL_JELLYFISH_MAX_MEM) {
-        fprintf(stderr, "[fossil_io_chat] Chain memory full, cannot learn new response.\n");
+        fprintf(stderr, "[fossil_ai_iochat] Chain memory full, cannot learn new response.\n");
         return -1;
     }
 
     int conflict = fossil_ai_jellyfish_detect_conflict(chain, input, output);
     if (conflict != 0) {
-        fprintf(stderr, "[fossil_io_chat] Conflict detected for input \"%s\", learn skipped.\n", input);
+        fprintf(stderr, "[fossil_ai_iochat] Conflict detected for input \"%s\", learn skipped.\n", input);
         return -1;
     }
 
     fossil_ai_jellyfish_learn(chain, input, output);
     log_hashed_event("[manual-learn]", input, output);
 
-    printf("[fossil_io_chat] Learned new response for input: \"%s\"\n", input);
+    printf("[fossil_ai_iochat] Learned new response for input: \"%s\"\n", input);
 
     return 0;
 }
 
-int fossil_io_chat_turn_count(const fossil_ai_jellyfish_chain_t *chain) {
+int fossil_ai_iochat_turn_count(const fossil_ai_jellyfish_chain_t *chain) {
     if (!chain) return 0;
 
     int count = 0;
@@ -283,7 +283,7 @@ int fossil_io_chat_turn_count(const fossil_ai_jellyfish_chain_t *chain) {
     return count;
 }
 
-int fossil_io_chat_summarize_session(const fossil_ai_jellyfish_chain_t *chain, char *summary, size_t size) {
+int fossil_ai_iochat_summarize_session(const fossil_ai_jellyfish_chain_t *chain, char *summary, size_t size) {
     if (!chain || !summary || size == 0) return -1;
 
     size_t pos = 0;
@@ -300,7 +300,7 @@ int fossil_io_chat_summarize_session(const fossil_ai_jellyfish_chain_t *chain, c
     return pos > 0 ? 0 : -1;
 }
 
-int fossil_io_chat_filter_recent(const fossil_ai_jellyfish_chain_t *chain, fossil_ai_jellyfish_chain_t *out_chain, int turn_count) {
+int fossil_ai_iochat_filter_recent(const fossil_ai_jellyfish_chain_t *chain, fossil_ai_jellyfish_chain_t *out_chain, int turn_count) {
     if (!chain || !out_chain || turn_count <= 0) return -1;
 
     fossil_ai_jellyfish_init(out_chain);
@@ -320,7 +320,7 @@ int fossil_io_chat_filter_recent(const fossil_ai_jellyfish_chain_t *chain, fossi
     return 0;
 }
 
-int fossil_io_chat_export_history(const fossil_ai_jellyfish_chain_t *chain, const char *filepath) {
+int fossil_ai_iochat_export_history(const fossil_ai_jellyfish_chain_t *chain, const char *filepath) {
     if (!chain || !filepath) return -1;
 
     FILE *f = fopen(filepath, "w");
@@ -336,7 +336,7 @@ int fossil_io_chat_export_history(const fossil_ai_jellyfish_chain_t *chain, cons
     return 0;
 }
 
-int fossil_io_chat_import_context(fossil_ai_jellyfish_chain_t *chain, const char *filepath) {
+int fossil_ai_iochat_import_context(fossil_ai_jellyfish_chain_t *chain, const char *filepath) {
     if (!chain || !filepath) return -1;
 
     FILE *f = fopen(filepath, "r");

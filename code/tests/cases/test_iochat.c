@@ -55,10 +55,10 @@ FOSSIL_TEST_CASE(c_test_iochat_start_and_end_session) {
     fossil_ai_jellyfish_chain_t chain;
     fossil_ai_jellyfish_init(&chain);
 
-    int start_result = fossil_io_chat_start("test_session", &chain);
+    int start_result = fossil_ai_iochat_start("test_session", &chain);
     ASSUME_ITS_EQUAL_I32(start_result, 0);
 
-    int end_result = fossil_io_chat_end(&chain);
+    int end_result = fossil_ai_iochat_end(&chain);
     ASSUME_ITS_EQUAL_I32(end_result, 0);
 }
 
@@ -66,26 +66,26 @@ FOSSIL_TEST_CASE(c_test_iochat_respond_known_and_unknown) {
     fossil_ai_jellyfish_chain_t chain;
     fossil_ai_jellyfish_init(&chain);
 
-    fossil_io_chat_start("chat", &chain);
-    fossil_io_chat_learn_response(&chain, "hi", "hello there!");
+    fossil_ai_iochat_start("chat", &chain);
+    fossil_ai_iochat_learn_response(&chain, "hi", "hello there!");
 
     char output[64] = {0};
-    int found = fossil_io_chat_respond(&chain, "hi", output, sizeof(output));
+    int found = fossil_ai_iochat_respond(&chain, "hi", output, sizeof(output));
     ASSUME_ITS_EQUAL_I32(found, 0);
     ASSUME_ITS_EQUAL_CSTR(output, "hello there!");
 
-    int not_found = fossil_io_chat_respond(&chain, "unknown", output, sizeof(output));
+    int not_found = fossil_ai_iochat_respond(&chain, "unknown", output, sizeof(output));
     ASSUME_ITS_EQUAL_I32(not_found, -1);
     ASSUME_ITS_TRUE(strstr(output, "not sure") != NULL);
 
-    fossil_io_chat_end(&chain);
+    fossil_ai_iochat_end(&chain);
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_inject_system_message_and_immutable) {
     fossil_ai_jellyfish_chain_t chain;
     fossil_ai_jellyfish_init(&chain);
 
-    int result = fossil_io_chat_inject_system_message(&chain, "System Ready");
+    int result = fossil_ai_iochat_inject_system_message(&chain, "System Ready");
     ASSUME_ITS_EQUAL_I32(result, 0);
 
     size_t idx = chain.count - 1;
@@ -98,10 +98,10 @@ FOSSIL_TEST_CASE(c_test_iochat_learn_response_and_turn_count) {
     fossil_ai_jellyfish_chain_t chain;
     fossil_ai_jellyfish_init(&chain);
 
-    fossil_io_chat_learn_response(&chain, "foo", "bar");
-    fossil_io_chat_learn_response(&chain, "baz", "qux");
+    fossil_ai_iochat_learn_response(&chain, "foo", "bar");
+    fossil_ai_iochat_learn_response(&chain, "baz", "qux");
 
-    int turns = fossil_io_chat_turn_count(&chain);
+    int turns = fossil_ai_iochat_turn_count(&chain);
     ASSUME_ITS_EQUAL_I32(turns, 2);
 }
 
@@ -109,11 +109,11 @@ FOSSIL_TEST_CASE(c_test_iochat_summarize_session_basic) {
     fossil_ai_jellyfish_chain_t chain;
     fossil_ai_jellyfish_init(&chain);
 
-    fossil_io_chat_learn_response(&chain, "hello", "world");
-    fossil_io_chat_learn_response(&chain, "how are you", "fine");
+    fossil_ai_iochat_learn_response(&chain, "hello", "world");
+    fossil_ai_iochat_learn_response(&chain, "how are you", "fine");
 
     char summary[256] = {0};
-    int result = fossil_io_chat_summarize_session(&chain, summary, sizeof(summary));
+    int result = fossil_ai_iochat_summarize_session(&chain, summary, sizeof(summary));
     ASSUME_ITS_EQUAL_I32(result, 0);
     ASSUME_ITS_TRUE(strstr(summary, "hello") != NULL);
     ASSUME_ITS_TRUE(strstr(summary, "world") != NULL);
@@ -125,11 +125,11 @@ FOSSIL_TEST_CASE(c_test_iochat_filter_recent_turns) {
     fossil_ai_jellyfish_init(&chain);
     fossil_ai_jellyfish_init(&filtered);
 
-    fossil_io_chat_learn_response(&chain, "a", "1");
-    fossil_io_chat_learn_response(&chain, "b", "2");
-    fossil_io_chat_learn_response(&chain, "c", "3");
+    fossil_ai_iochat_learn_response(&chain, "a", "1");
+    fossil_ai_iochat_learn_response(&chain, "b", "2");
+    fossil_ai_iochat_learn_response(&chain, "c", "3");
 
-    int result = fossil_io_chat_filter_recent(&chain, &filtered, 2);
+    int result = fossil_ai_iochat_filter_recent(&chain, &filtered, 2);
     ASSUME_ITS_EQUAL_I32(result, 0);
     ASSUME_ITS_EQUAL_I32(filtered.count, 2);
     ASSUME_ITS_EQUAL_CSTR(filtered.commits[0].io.input, "b");
@@ -141,14 +141,14 @@ FOSSIL_TEST_CASE(c_test_iochat_export_and_import_history) {
     fossil_ai_jellyfish_init(&chain);
     fossil_ai_jellyfish_init(&imported);
 
-    fossil_io_chat_learn_response(&chain, "x", "y");
-    fossil_io_chat_learn_response(&chain, "z", "w");
+    fossil_ai_iochat_learn_response(&chain, "x", "y");
+    fossil_ai_iochat_learn_response(&chain, "z", "w");
 
     const char *filepath = "test_iochat_history.txt";
-    int export_result = fossil_io_chat_export_history(&chain, filepath);
+    int export_result = fossil_ai_iochat_export_history(&chain, filepath);
     ASSUME_ITS_EQUAL_I32(export_result, 0);
 
-    int import_result = fossil_io_chat_import_context(&imported, filepath);
+    int import_result = fossil_ai_iochat_import_context(&imported, filepath);
     ASSUME_ITS_EQUAL_I32(import_result, 0);
 
     ASSUME_ITS_EQUAL_I32(imported.count, 2);
