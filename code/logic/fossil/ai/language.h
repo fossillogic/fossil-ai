@@ -183,6 +183,7 @@ void fossil_ai_lang_generate_variants(const char *input, char outputs[][256], si
 #ifdef __cplusplus
 }
 #include <stdexcept>
+#include <memory>
 #include <vector>
 #include <string>
 #include <array>
