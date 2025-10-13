@@ -1753,14 +1753,22 @@ const fossil_ai_jellyfish_block_t *fossil_ai_jellyfish_best_match(
     upper = FOSSIL_JELLYFISH_MAX_MEM;
 
     for (size_t i = 0; i < upper; ++i) {
-    const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
-    if (!b->attributes.valid)
-        continue;
+        const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
+        if (!b->attributes.valid)
+            continue;
 
-    /* Fast exact input match */
-    if (strcmp(b->io.input, input) == 0) {
-        return b; /* exact match wins outright */
-    }
+        /* Collect exact input matches and pick highest confidence */
+        if (strcmp(b->io.input, input) == 0) {
+            float c = b->attributes.confidence;
+            if (c < 0.0f) c = 0.0f;
+            if (c > 1.0f) c = 1.0f;
+            if (!best || c > best_score ||
+                (c == best_score && b->time.timestamp > best->time.timestamp)) {
+                best = b;
+                best_score = c;
+            }
+            continue;
+        }
 
     if (qcount == 0 || b->io.input_token_count == 0)
         continue;
