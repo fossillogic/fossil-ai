@@ -53,6 +53,29 @@ static size_t fossil_jellyfish_strnlen_fallback(const char *s, size_t maxlen) {
 #endif
 #endif
 
+/* ------------------------------------------------------------------
+ * Custom safer strncpy replacement (always NUL-terminates, no padding)
+ * Copies up to (n-1) chars, writes terminating '\0' if n>0.
+ * This differs from ISO strncpy (which pads with '\0's and may
+ * leave destination unterminated when source length >= n).
+ * Our code manually NUL-terminates after calls, so this is fine.
+ * If exact ISO behavior is needed elsewhere, undef the macro.
+ * ------------------------------------------------------------------ */
+#ifndef FOSSIL_JELLYFISH_STRNCPY_FALLBACK_H
+#define FOSSIL_JELLYFISH_STRNCPY_FALLBACK_H
+#include <stddef.h>
+static char *fossil_jellyfish_strncpy(char *dst, const char *src, size_t n) {
+    if (!dst || n == 0) return dst;
+    if (!src) { dst[0] = '\0'; return dst; }
+    size_t i = 0;
+    for (; i + 1 < n && src[i]; ++i) dst[i] = src[i];
+    dst[i] = '\0';
+    return dst;
+}
+/* Redirect local strncpy calls */
+#define strncpy(d,s,n) fossil_jellyfish_strncpy((d),(s),(n))
+#endif
+
 // ========================================================
 // HASH Algorithm magic
 // ========================================================
@@ -4097,11 +4120,33 @@ int fossil_ai_jellyfish_rebase(fossil_ai_jellyfish_chain_t *chain,
     memcpy(parent[0], onto_head, FOSSIL_JELLYFISH_HASH_SIZE);
 
     char msg[256];
-    snprintf(msg, sizeof(msg), "rebase %s onto %s (src:%s)",
-             chain->branches[b_src].name,
-             chain->branches[b_onto].name,
-             src_block->identity.commit_message[0] ?
-                 src_block->identity.commit_message : "head");
+    const char *src_msg = src_block->identity.commit_message[0] ?
+                          src_block->identity.commit_message : "head";
+    /* Safely build message with truncation to avoid overflow */
+    int w = snprintf(msg, sizeof(msg), "rebase %s onto %s (src:",
+                     chain->branches[b_src].name,
+                     chain->branches[b_onto].name);
+    if (w < 0) {
+        msg[0] = '\0';
+    } else {
+        size_t used = (size_t)w;
+        if (used >= sizeof(msg)) used = sizeof(msg) - 1;
+        size_t remain = sizeof(msg) - 1 - used;
+        size_t src_len = strnlen(src_msg, remain);
+        memcpy(msg + used, src_msg, src_len);
+        used += src_len;
+        if (used < sizeof(msg) - 1) {
+            if (used == sizeof(msg) - 1) {
+                /* no space for closing ')' */
+            } else {
+                msg[used++] = ')';
+            }
+        } else {
+            /* Ensure room for null terminator */
+            used = sizeof(msg) - 1;
+        }
+        msg[used] = '\0';
+    }
 
     fossil_ai_jellyfish_block_t *rebased =
         fossil_ai_jellyfish_add_commit(chain,
@@ -4161,8 +4206,22 @@ int fossil_ai_jellyfish_cherry_pick(fossil_ai_jellyfish_chain_t *chain, const ui
     /* Build commit message */
     char msg[256];
     const char *orig_msg = src->identity.commit_message[0] ? src->identity.commit_message : "(no message)";
-    snprintf(msg, sizeof(msg), "cherry-pick %u: %s",
-             src->identity.commit_index, orig_msg);
+    int hdr_len = snprintf(msg, sizeof(msg), "cherry-pick %u: ", src->identity.commit_index);
+    if (hdr_len < 0) {
+        msg[0] = '\0';
+    } else {
+        size_t used = (size_t)hdr_len;
+        if (used >= sizeof(msg)) {
+            msg[sizeof(msg) - 1] = '\0';
+        } else {
+            size_t avail = sizeof(msg) - used - 1;
+            if (avail > 0 && orig_msg) {
+                size_t copy_len = strnlen(orig_msg, avail);
+                memcpy(msg + used, orig_msg, copy_len);
+                msg[used + copy_len] = '\0';
+            }
+        }
+    }
 
     /* Add new commit */
     fossil_ai_jellyfish_block_t *newb =
