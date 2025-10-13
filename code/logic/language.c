@@ -158,24 +158,55 @@ int fossil_lang_detect_bias_or_falsehood(const char *input) {
     return 0;
 }
 
-int fossil_lang_align_truth(const fossil_jellyfish_chain_t *chain, const char *input) {
-    if (!chain || !input) return 0;
+int fossil_lang_align_truth(const fossil_ai_jellyfish_chain_t *chain, const char *input) {
+    if (!chain || !input || !*input) return 0;
 
+    // Exact match pass
     for (size_t i = 0; i < chain->count; ++i) {
-        const fossil_jellyfish_block_t *b = &chain->memory[i];
-        if (!b->attributes.valid) continue;
+        const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
+        if (!b->attributes.valid || b->attributes.pruned || b->attributes.redacted)
+            continue;
 
         if (strcmp(input, b->io.input) == 0) {
+            // Negative / contradiction markers
+            if (b->classify.is_contradicted || b->classify.is_hallucinated)
+                return -1;
             if (strcmp(b->io.output, "false") == 0 || strcmp(b->io.output, "incorrect") == 0)
                 return -1;
+
+            // Strongly trusted
+            if (b->attributes.trusted || b->block_type == JELLY_COMMIT_VALIDATE)
+                return 2;
+
             return 1;
         }
     }
 
-    return 0;
+    // Fuzzy similarity fallback
+    float best_sim = 0.0f;
+    int best_score = 0;
+    for (size_t i = 0; i < chain->count; ++i) {
+        const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
+        if (!b->attributes.valid) continue;
+
+        float sim = fossil_lang_similarity(input, b->io.input);
+        if (sim > best_sim) {
+            best_sim = sim;
+            if (sim >= 0.90f) {
+                if (b->classify.is_contradicted) best_score = -1;
+                else if (b->attributes.trusted || b->block_type == JELLY_COMMIT_VALIDATE) best_score = 2;
+                else best_score = 1;
+            } else if (sim >= 0.75f) {
+                if (b->classify.is_contradicted) best_score = -1;
+                else best_score = 1;
+            }
+        }
+    }
+
+    return best_score; // 2 validated, 1 aligned, 0 unknown, -1 contradiction
 }
 
-float fossil_lang_estimate_trust(const fossil_jellyfish_chain_t *chain, const char *input) {
+float fossil_lang_estimate_trust(const fossil_ai_jellyfish_chain_t *chain, const char *input) {
     if (!input || strlen(input) < 3) return 0.1f;
 
     int contradiction = fossil_lang_align_truth(chain, input);
