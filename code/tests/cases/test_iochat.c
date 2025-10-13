@@ -88,11 +88,10 @@ FOSSIL_TEST_CASE(c_test_iochat_inject_system_message_and_immutable) {
     int result = fossil_io_chat_inject_system_message(&chain, "System Ready");
     ASSUME_ITS_EQUAL_I32(result, 0);
 
-    // Last block should be immutable and input "[system]"
     size_t idx = chain.count - 1;
-    ASSUME_ITS_TRUE(chain.memory[idx].attributes.immutable);
-    ASSUME_ITS_EQUAL_CSTR(chain.memory[idx].io.input, "[system]");
-    ASSUME_ITS_EQUAL_CSTR(chain.memory[idx].io.output, "System Ready");
+    ASSUME_ITS_TRUE(chain.commits[idx].attributes.immutable);
+    ASSUME_ITS_EQUAL_CSTR(chain.commits[idx].io.input, "[system]");
+    ASSUME_ITS_EQUAL_CSTR(chain.commits[idx].io.output, "System Ready");
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_learn_response_and_turn_count) {
@@ -133,8 +132,8 @@ FOSSIL_TEST_CASE(c_test_iochat_filter_recent_turns) {
     int result = fossil_io_chat_filter_recent(&chain, &filtered, 2);
     ASSUME_ITS_EQUAL_I32(result, 0);
     ASSUME_ITS_EQUAL_I32(filtered.count, 2);
-    ASSUME_ITS_EQUAL_CSTR(filtered.memory[0].io.input, "b");
-    ASSUME_ITS_EQUAL_CSTR(filtered.memory[1].io.input, "c");
+    ASSUME_ITS_EQUAL_CSTR(filtered.commits[0].io.input, "b");
+    ASSUME_ITS_EQUAL_CSTR(filtered.commits[1].io.input, "c");
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_export_and_import_history) {
@@ -153,10 +152,10 @@ FOSSIL_TEST_CASE(c_test_iochat_export_and_import_history) {
     ASSUME_ITS_EQUAL_I32(import_result, 0);
 
     ASSUME_ITS_EQUAL_I32(imported.count, 2);
-    ASSUME_ITS_EQUAL_CSTR(imported.memory[0].io.input, "x");
-    ASSUME_ITS_EQUAL_CSTR(imported.memory[0].io.output, "y");
-    ASSUME_ITS_EQUAL_CSTR(imported.memory[1].io.input, "z");
-    ASSUME_ITS_EQUAL_CSTR(imported.memory[1].io.output, "w");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[0].io.input, "x");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[0].io.output, "y");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[1].io.input, "z");
+    ASSUME_ITS_EQUAL_CSTR(imported.commits[1].io.output, "w");
 
     remove(filepath);
 }

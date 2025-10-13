@@ -116,7 +116,6 @@ FOSSIL_TEST_CASE(c_test_lang_extract_focus) {
     char focus[32] = {0};
     fossil_lang_extract_focus("The quick brown fox jumps over the lazy dog.", focus, sizeof(focus));
     ASSUME_ITS_TRUE(strlen(focus) > 0);
-    // Heuristic: focus word should be "fox" or "dog"
     ASSUME_ITS_TRUE(strstr(focus, "fox") != NULL || strstr(focus, "dog") != NULL);
 }
 
@@ -143,16 +142,40 @@ FOSSIL_TEST_CASE(c_test_lang_generate_variants) {
     char variants[3][256] = {{0}};
     fossil_lang_generate_variants("hello", variants, 3);
     ASSUME_ITS_TRUE(strlen(variants[0]) > 0);
-    // At least one variant should differ from input
     ASSUME_ITS_TRUE(strcmp(variants[0], "hello") == 0 || strcmp(variants[1], "hello") == 0);
 }
 
 FOSSIL_TEST_CASE(c_test_lang_process_pipeline) {
-    fossil_lang_pipeline_t pipe = {0}; // Assume default enables all
+    fossil_lang_pipeline_t pipe = {0};
     fossil_lang_result_t result = {0};
     fossil_lang_process(&pipe, "Is this a test?", &result);
-    // Check at least one field is filled
     ASSUME_ITS_TRUE(result.token_count > 0 || result.is_question);
+}
+
+/* Added tests for new Jellyfish commit / FSON model */
+
+FOSSIL_TEST_CASE(c_test_jellyfish_commit_enum_values) {
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_UNKNOWN, 0);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_INIT, 1);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_BRANCH, 10);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_TAG, 20);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_EXPERIMENT, 30);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_SYNC, 40);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_DETACHED, 50);
+    ASSUME_ITS_EQUAL_I32(JELLY_COMMIT_FINAL, 54);
+}
+
+FOSSIL_TEST_CASE(c_test_jellyfish_block_default_init) {
+    fossil_ai_jellyfish_block_t blk = {0};
+    ASSUME_ITS_EQUAL_I32(blk.block_type, JELLY_COMMIT_UNKNOWN);
+    ASSUME_ITS_EQUAL_I32(blk.identity.parent_count, 0);
+    ASSUME_ITS_TRUE(blk.io.input_len == 0 && blk.io.output_len == 0);
+}
+
+FOSSIL_TEST_CASE(c_test_jellyfish_chain_basic_init) {
+    fossil_ai_jellyfish_chain_t chain = {0};
+    ASSUME_ITS_EQUAL_I32(chain.count, 0);
+    ASSUME_ITS_TRUE(chain.branch_count == 0);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -171,6 +194,9 @@ FOSSIL_TEST_GROUP(c_lang_tests) {
     FOSSIL_TEST_ADD(c_lang_fixture, c_test_lang_embedding_similarity);
     FOSSIL_TEST_ADD(c_lang_fixture, c_test_lang_generate_variants);
     FOSSIL_TEST_ADD(c_lang_fixture, c_test_lang_process_pipeline);
+    FOSSIL_TEST_ADD(c_lang_fixture, c_test_jellyfish_commit_enum_values);
+    FOSSIL_TEST_ADD(c_lang_fixture, c_test_jellyfish_block_default_init);
+    FOSSIL_TEST_ADD(c_lang_fixture, c_test_jellyfish_chain_basic_init);
 
     FOSSIL_TEST_REGISTER(c_lang_fixture);
 } // end of tests

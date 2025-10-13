@@ -51,8 +51,6 @@ FOSSIL_TEARDOWN(cpp_jellyfish_fixture) {
 // as samples for library usage.
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
-// C++ Jellyfish RAII wrapper tests replacing direct C API usage where practical
-
 using fossil::ai::Jellyfish;
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_hash_basic) {
@@ -102,12 +100,11 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_hash_difference) {
 FOSSIL_TEST_CASE(cpp_test_jellyfish_init_zeroes_chain) {
     Jellyfish jf;
     jf.init();
-    auto *c = jf.native_chain();
-    ASSUME_ITS_EQUAL_I32((int)c->count, 0);
+    ASSUME_ITS_EQUAL_I32((int)jf.native_chain()->count, 0);
     for (size_t i = 0; i < FOSSIL_JELLYFISH_MAX_MEM; ++i) {
         int all_zero = 1;
-        const uint8_t *mem = (const uint8_t *)&c->memory[i];
-        for (size_t j = 0; j < sizeof(c->memory[i]); ++j) {
+        const uint8_t *mem = (const uint8_t *)&jf.native_chain()->commits[i];
+        for (size_t j = 0; j < sizeof(jf.native_chain()->commits[i]); ++j) {
             if (mem[j] != 0) { all_zero = 0; break; }
         }
         ASSUME_ITS_TRUE(all_zero);
@@ -136,13 +133,13 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_update_block) {
     jf.learn("dog", "bark");
     size_t idx = 0;
     for (; idx < FOSSIL_JELLYFISH_MAX_MEM; ++idx) {
-        if (jf.native_chain()->memory[idx].attributes.valid) break;
+        if (jf.native_chain()->commits[idx].attributes.valid) break;
     }
     ASSUME_ITS_TRUE(idx < FOSSIL_JELLYFISH_MAX_MEM);
 
     jf.update(idx, "dog", "woof");
-    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->memory[idx].io.input, "dog");
-    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->memory[idx].io.output, "woof");
+    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->commits[idx].io.input, "dog");
+    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->commits[idx].io.output, "woof");
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_remove_block) {
@@ -151,34 +148,34 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_remove_block) {
     jf.learn("bird", "tweet");
     size_t idx = 0;
     for (; idx < FOSSIL_JELLYFISH_MAX_MEM; ++idx) {
-        if (jf.native_chain()->memory[idx].attributes.valid) break;
+        if (jf.native_chain()->commits[idx].attributes.valid) break;
     }
     ASSUME_ITS_TRUE(idx < FOSSIL_JELLYFISH_MAX_MEM);
 
     jf.remove(idx);
-    ASSUME_ITS_FALSE(jf.native_chain()->memory[idx].attributes.valid);
+    ASSUME_ITS_FALSE(jf.native_chain()->commits[idx].attributes.valid);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_save_and_load) {
-    Jellyfish src;
-    Jellyfish dst;
+    Jellyfish jf;
+    Jellyfish loaded;
 
-    src.learn("sun", "shine");
-    src.learn("moon", "glow");
+    jf.learn("sun", "shine");
+    jf.learn("moon", "glow");
 
     const char *filepath = "test_jellyfish_save.bin";
-    int save_result = src.save(filepath);
+    int save_result = jf.save(filepath);
     ASSUME_ITS_EQUAL_I32(save_result, 0);
 
-    int load_result = dst.load(filepath);
+    int load_result = loaded.load(filepath);
     ASSUME_ITS_EQUAL_I32(load_result, 0);
 
-    ASSUME_ITS_EQUAL_I32((int)src.native_chain()->count, (int)dst.native_chain()->count);
-    for (size_t i = 0; i < src.native_chain()->count; ++i) {
-        ASSUME_ITS_EQUAL_CSTR(src.native_chain()->memory[i].io.input,
-                              dst.native_chain()->memory[i].io.input);
-        ASSUME_ITS_EQUAL_CSTR(src.native_chain()->memory[i].io.output,
-                              dst.native_chain()->memory[i].io.output);
+    ASSUME_ITS_EQUAL_I32((int)jf.native_chain()->count, (int)loaded.native_chain()->count);
+    for (size_t i = 0; i < jf.native_chain()->count; ++i) {
+        ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->commits[i].io.input,
+                              loaded.native_chain()->commits[i].io.input);
+        ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->commits[i].io.output,
+                              loaded.native_chain()->commits[i].io.output);
     }
     remove(filepath);
 }
@@ -191,38 +188,43 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_load_invalid_file) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_cleanup_removes_invalid_blocks) {
     Jellyfish jf;
+
     jf.learn("a", "1");
     jf.learn("b", "2");
-    jf.native_chain()->memory[0].attributes.valid = 0;
+    jf.native_chain()->commits[0].attributes.valid = 0;
 
     jf.cleanup();
 
     size_t valid_count = 0;
     for (size_t i = 0; i < FOSSIL_JELLYFISH_MAX_MEM; ++i)
-        if (jf.native_chain()->memory[i].attributes.valid) valid_count++;
+        if (jf.native_chain()->commits[i].attributes.valid) valid_count++;
     ASSUME_ITS_EQUAL_I32((int)valid_count, 1);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_audit_detects_duplicate_hash) {
     Jellyfish jf;
+
     jf.learn("dup", "val");
     jf.learn("dup", "val");
+
     int issues = jf.audit();
     ASSUME_ITS_TRUE(issues > 0);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_prune_low_confidence) {
     Jellyfish jf;
+
     jf.learn("x", "y");
-    jf.native_chain()->memory[0].attributes.confidence = 0.01f;
+    jf.native_chain()->commits[0].attributes.confidence = 0.01f;
 
     int pruned = jf.prune(0.5f);
     ASSUME_ITS_EQUAL_I32(pruned, 1);
-    ASSUME_ITS_FALSE(jf.native_chain()->memory[0].attributes.valid);
+    ASSUME_ITS_FALSE(jf.native_chain()->commits[0].attributes.valid);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_reason_returns_output) {
     Jellyfish jf;
+
     jf.learn("input", "output");
     const char *result = jf.reason("input");
     ASSUME_ITS_EQUAL_CSTR(result, "output");
@@ -230,19 +232,21 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_reason_returns_output) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_reason_returns_unknown) {
     Jellyfish jf;
+
     const char *result = jf.reason("notfound");
     ASSUME_ITS_EQUAL_CSTR(result, "Unknown");
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_decay_confidence) {
     Jellyfish jf;
+
     jf.learn("decay", "test");
-    jf.native_chain()->memory[0].attributes.confidence = 1.0f;
+    jf.native_chain()->commits[0].attributes.confidence = 1.0f;
 
     jf.decay_confidence(0.5f);
 
-    ASSUME_ITS_TRUE(jf.native_chain()->memory[0].attributes.confidence < 1.0f);
-    ASSUME_ITS_TRUE(jf.native_chain()->memory[0].attributes.confidence > 0.0f);
+    ASSUME_ITS_TRUE(jf.native_chain()->commits[0].attributes.confidence < 1.0f);
+    ASSUME_ITS_TRUE(jf.native_chain()->commits[0].attributes.confidence > 0.0f);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_tokenize_basic) {
@@ -257,10 +261,11 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_tokenize_basic) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_best_memory_returns_highest_confidence) {
     Jellyfish jf;
+
     jf.learn("a", "1");
     jf.learn("b", "2");
-    jf.native_chain()->memory[0].attributes.confidence = 0.1f;
-    jf.native_chain()->memory[1].attributes.confidence = 0.9f;
+    jf.native_chain()->commits[0].attributes.confidence = 0.1f;
+    jf.native_chain()->commits[1].attributes.confidence = 0.9f;
 
     const fossil_ai_jellyfish_block_t *best = jf.best_memory();
     ASSUME_ITS_TRUE(best != NULL);
@@ -269,6 +274,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_best_memory_returns_highest_confidence) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_knowledge_coverage_basic) {
     Jellyfish jf;
+
     float coverage_empty = jf.knowledge_coverage();
     ASSUME_ITS_TRUE(fabsf(coverage_empty - 0.0f) < 0.00001f);
 
@@ -279,6 +285,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_knowledge_coverage_basic) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_detect_conflict) {
     Jellyfish jf;
+
     jf.learn("input", "output1");
     int conflict = jf.detect_conflict("input", "output2");
     ASSUME_ITS_TRUE(conflict != 0);
@@ -293,7 +300,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_verify_block_valid_and_invalid) {
     strcpy(block.io.input, "abc");
     strcpy(block.io.output, "def");
     for (size_t i = 0; i < FOSSIL_JELLYFISH_HASH_SIZE; ++i)
-        block.identity.hash[i] = (uint8_t)(i + 1);
+        block.identity.commit_hash[i] = (uint8_t)(i + 1);
 
     bool valid = Jellyfish::verify_block(&block);
     ASSUME_ITS_TRUE(valid);
@@ -314,7 +321,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_verify_chain_all_valid) {
 FOSSIL_TEST_CASE(cpp_test_jellyfish_verify_chain_with_invalid_block) {
     Jellyfish jf;
     jf.learn("one", "two");
-    jf.native_chain()->memory[0].io.input[0] = '\0';
+    jf.native_chain()->commits[0].io.input[0] = '\0';
 
     bool ok = jf.verify_chain();
     ASSUME_ITS_FALSE(ok);
@@ -322,17 +329,19 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_verify_chain_with_invalid_block) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_trust_score_empty) {
     Jellyfish jf;
+
     float score = jf.chain_trust_score();
     ASSUME_ITS_TRUE(fabsf(score - 0.0f) < 0.00001f);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_trust_score_immutable_blocks) {
     Jellyfish jf;
+
     jf.learn("core", "logic");
     jf.learn("aux", "data");
-    Jellyfish::mark_immutable(&jf.native_chain()->memory[0]);
-    jf.native_chain()->memory[0].attributes.confidence = 1.0f;
-    jf.native_chain()->memory[1].attributes.confidence = 0.5f;
+    Jellyfish::mark_immutable(&jf.native_chain()->commits[0]);
+    jf.native_chain()->commits[0].attributes.confidence = 1.0f;
+    jf.native_chain()->commits[1].attributes.confidence = 0.5f;
 
     float score = jf.chain_trust_score();
     ASSUME_ITS_TRUE(score > 0.0f && score <= 1.0f);
@@ -340,13 +349,15 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_trust_score_immutable_blocks) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_mark_immutable_sets_flag) {
     Jellyfish jf;
+
     jf.learn("persist", "forever");
-    Jellyfish::mark_immutable(&jf.native_chain()->memory[0]);
-    ASSUME_ITS_TRUE(jf.native_chain()->memory[0].attributes.immutable);
+    Jellyfish::mark_immutable(&jf.native_chain()->commits[0]);
+    ASSUME_ITS_TRUE(jf.native_chain()->commits[0].attributes.immutable);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_deduplicate_chain_removes_duplicates) {
     Jellyfish jf;
+
     jf.learn("dup", "val");
     jf.learn("dup", "val");
     size_t before = jf.native_chain()->count;
@@ -358,19 +369,21 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_deduplicate_chain_removes_duplicates) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_compress_chain_trims_whitespace) {
     Jellyfish jf;
+
     jf.learn("  spaced  ", "  out  ");
     int modified = jf.compress_chain();
     ASSUME_ITS_TRUE(modified > 0);
-    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->memory[0].io.input, "spaced");
-    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->memory[0].io.output, "out");
+    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->commits[0].io.input, "spaced");
+    ASSUME_ITS_EQUAL_CSTR(jf.native_chain()->commits[0].io.output, "out");
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_best_match_returns_most_confident) {
     Jellyfish jf;
+
     jf.learn("input", "first");
     jf.learn("input", "second");
-    jf.native_chain()->memory[0].attributes.confidence = 0.2f;
-    jf.native_chain()->memory[1].attributes.confidence = 0.9f;
+    jf.native_chain()->commits[0].attributes.confidence = 0.2f;
+    jf.native_chain()->commits[1].attributes.confidence = 0.9f;
 
     const fossil_ai_jellyfish_block_t *best = jf.best_match("input");
     ASSUME_ITS_TRUE(best != NULL);
@@ -383,7 +396,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_redact_block_redacts_fields) {
     strcpy(block.io.input, "secret_input");
     strcpy(block.io.output, "secret_output");
     for (size_t i = 0; i < FOSSIL_JELLYFISH_HASH_SIZE; ++i)
-        block.identity.hash[i] = (uint8_t)(i + 1);
+        block.identity.commit_hash[i] = (uint8_t)(i + 1);
 
     int result = Jellyfish::redact_block(&block);
     ASSUME_ITS_EQUAL_I32(result, 0);
@@ -395,7 +408,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_stats_basic) {
     Jellyfish jf;
     jf.learn("a", "1");
     jf.learn("b", "2");
-    jf.native_chain()->memory[0].attributes.immutable = 1;
+    jf.native_chain()->commits[0].attributes.immutable = 1;
 
     size_t valid_count[5] = {0};
     float avg_conf[5] = {0};
@@ -421,6 +434,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_compare_chains_detects_difference) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_fingerprint_changes_on_update) {
     Jellyfish jf;
+
     uint8_t hash1[FOSSIL_JELLYFISH_HASH_SIZE] = {0};
     uint8_t hash2[FOSSIL_JELLYFISH_HASH_SIZE] = {0};
 
@@ -439,6 +453,7 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_fingerprint_changes_on_update) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_trim_reduces_block_count) {
     Jellyfish jf;
+
     for (int i = 0; i < 5; ++i) {
         char in[8], out[8];
         snprintf(in, sizeof(in), "in%d", i);
@@ -454,13 +469,14 @@ FOSSIL_TEST_CASE(cpp_test_jellyfish_trim_reduces_block_count) {
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_chain_compact_moves_blocks) {
     Jellyfish jf;
+
     jf.learn("a", "1");
     jf.learn("b", "2");
-    jf.native_chain()->memory[0].attributes.valid = 0;
+    jf.native_chain()->commits[0].attributes.valid = 0;
 
     int moved = jf.chain_compact();
     ASSUME_ITS_TRUE(moved > 0);
-    ASSUME_ITS_TRUE(jf.native_chain()->memory[0].attributes.valid);
+    ASSUME_ITS_TRUE(jf.native_chain()->commits[0].attributes.valid);
 }
 
 FOSSIL_TEST_CASE(cpp_test_jellyfish_block_age_basic) {
