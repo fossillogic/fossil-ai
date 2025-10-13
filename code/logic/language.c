@@ -25,12 +25,12 @@
 #include "fossil/ai/language.h"
 
 
-void fossil_lang_process(const fossil_lang_pipeline_t *pipe, const char *input, fossil_lang_result_t *out) {
-    char working[FOSSIL_LANG_PIPELINE_OUTPUT_SIZE] = {0};
+void fossil_ai_lang_process(const fossil_ai_lang_pipeline_t *pipe, const char *input, fossil_ai_lang_result_t *out) {
+    char working[fossil_ai_lang_PIPELINE_OUTPUT_SIZE] = {0};
     const char *src = input;
 
     if (pipe->normalize) {
-        fossil_lang_normalize(input, working, sizeof(working));
+        fossil_ai_lang_normalize(input, working, sizeof(working));
         src = working;
     
         // Safe copy with guaranteed null-termination
@@ -38,31 +38,31 @@ void fossil_lang_process(const fossil_lang_pipeline_t *pipe, const char *input, 
     }
 
     if (pipe->tokenize) {
-        out->token_count = fossil_lang_tokenize(src, out->tokens, 64);
+        out->token_count = fossil_ai_lang_tokenize(src, out->tokens, 64);
     }
 
     if (pipe->detect_emotion) {
-        out->emotion_score = fossil_lang_detect_emotion(src);
+        out->emotion_score = fossil_ai_lang_detect_emotion(src);
     }
 
     if (pipe->detect_bias) {
-        out->bias_detected = fossil_lang_detect_bias_or_falsehood(src);
+        out->bias_detected = fossil_ai_lang_detect_bias_or_falsehood(src);
     }
 
     if (pipe->is_question) {
-        out->is_question = fossil_lang_is_question(src);
+        out->is_question = fossil_ai_lang_is_question(src);
     }
 
     if (pipe->extract_focus) {
-        fossil_lang_extract_focus(src, out->focus, sizeof(out->focus));
+        fossil_ai_lang_extract_focus(src, out->focus, sizeof(out->focus));
     }
 
     if (pipe->summarize) {
-        fossil_lang_summarize(src, out->summary, sizeof(out->summary));
+        fossil_ai_lang_summarize(src, out->summary, sizeof(out->summary));
     }
 }
 
-size_t fossil_lang_tokenize(const char *input, char tokens[][FOSSIL_JELLYFISH_TOKEN_SIZE], size_t max_tokens) {
+size_t fossil_ai_lang_tokenize(const char *input, char tokens[][FOSSIL_JELLYFISH_TOKEN_SIZE], size_t max_tokens) {
     size_t count = 0, len = strlen(input);
     char word[FOSSIL_JELLYFISH_TOKEN_SIZE] = {0};
     size_t wi = 0;
@@ -83,7 +83,7 @@ size_t fossil_lang_tokenize(const char *input, char tokens[][FOSSIL_JELLYFISH_TO
     return count;
 }
 
-bool fossil_lang_is_question(const char *input) {
+bool fossil_ai_lang_is_question(const char *input) {
     size_t len = strlen(input);
     if (len == 0) return false;
 
@@ -106,7 +106,7 @@ bool fossil_lang_is_question(const char *input) {
     return false;
 }
 
-float fossil_lang_detect_emotion(const char *input) {
+float fossil_ai_lang_detect_emotion(const char *input) {
     const char *positive[] = {
         "great", "love", "happy", "good", "excellent", "amazing", "yes", "awesome", "fantastic", "wonderful",
         "positive", "joy", "joyful", "delight", "delighted", "pleased", "satisfied", "brilliant", "superb",
@@ -124,7 +124,7 @@ float fossil_lang_detect_emotion(const char *input) {
 
     float score = 0.0f;
     char tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
-    size_t n = fossil_lang_tokenize(input, tokens, FOSSIL_JELLYFISH_MAX_TOKENS);
+    size_t n = fossil_ai_lang_tokenize(input, tokens, FOSSIL_JELLYFISH_MAX_TOKENS);
 
     for (size_t i = 0; i < n; ++i) {
         for (size_t j = 0; j < sizeof(positive) / sizeof(positive[0]); ++j)
@@ -138,7 +138,7 @@ float fossil_lang_detect_emotion(const char *input) {
     return score / 3.0f; // Normalize to [-1.0, 1.0]
 }
 
-int fossil_lang_detect_bias_or_falsehood(const char *input) {
+int fossil_ai_lang_detect_bias_or_falsehood(const char *input) {
     const char *bias_phrases[] = {
         "everyone knows", "obviously", "literally", "always", "never", "the truth is",
         "you have to believe", "no one can deny", "it's a fact", "fake news",
@@ -158,31 +158,62 @@ int fossil_lang_detect_bias_or_falsehood(const char *input) {
     return 0;
 }
 
-int fossil_lang_align_truth(const fossil_jellyfish_chain_t *chain, const char *input) {
-    if (!chain || !input) return 0;
+int fossil_ai_lang_align_truth(const fossil_ai_jellyfish_chain_t *chain, const char *input) {
+    if (!chain || !input || !*input) return 0;
 
+    // Exact match pass
     for (size_t i = 0; i < chain->count; ++i) {
-        const fossil_jellyfish_block_t *b = &chain->memory[i];
-        if (!b->attributes.valid) continue;
+        const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
+        if (!b->attributes.valid || b->attributes.pruned || b->attributes.redacted)
+            continue;
 
         if (strcmp(input, b->io.input) == 0) {
+            // Negative / contradiction markers
+            if (b->classify.is_contradicted || b->classify.is_hallucinated)
+                return -1;
             if (strcmp(b->io.output, "false") == 0 || strcmp(b->io.output, "incorrect") == 0)
                 return -1;
+
+            // Strongly trusted
+            if (b->attributes.trusted || b->block_type == JELLY_COMMIT_VALIDATE)
+                return 2;
+
             return 1;
         }
     }
 
-    return 0;
+    // Fuzzy similarity fallback
+    float best_sim = 0.0f;
+    int best_score = 0;
+    for (size_t i = 0; i < chain->count; ++i) {
+        const fossil_ai_jellyfish_block_t *b = &chain->commits[i];
+        if (!b->attributes.valid) continue;
+
+        float sim = fossil_ai_lang_similarity(input, b->io.input);
+        if (sim > best_sim) {
+            best_sim = sim;
+            if (sim >= 0.90f) {
+                if (b->classify.is_contradicted) best_score = -1;
+                else if (b->attributes.trusted || b->block_type == JELLY_COMMIT_VALIDATE) best_score = 2;
+                else best_score = 1;
+            } else if (sim >= 0.75f) {
+                if (b->classify.is_contradicted) best_score = -1;
+                else best_score = 1;
+            }
+        }
+    }
+
+    return best_score; // 2 validated, 1 aligned, 0 unknown, -1 contradiction
 }
 
-float fossil_lang_estimate_trust(const fossil_jellyfish_chain_t *chain, const char *input) {
+float fossil_ai_lang_estimate_trust(const fossil_ai_jellyfish_chain_t *chain, const char *input) {
     if (!input || strlen(input) < 3) return 0.1f;
 
-    int contradiction = fossil_lang_align_truth(chain, input);
+    int contradiction = fossil_ai_lang_align_truth(chain, input);
     if (contradiction < 0) return 0.0f;
 
-    float emotion = fossil_lang_detect_emotion(input);
-    float bias = fossil_lang_detect_bias_or_falsehood(input) ? -0.5f : 0.0f;
+    float emotion = fossil_ai_lang_detect_emotion(input);
+    float bias = fossil_ai_lang_detect_bias_or_falsehood(input) ? -0.5f : 0.0f;
 
     float trust = 0.5f + (emotion * 0.25f) + (bias);
     if (trust > 1.0f) trust = 1.0f;
@@ -191,7 +222,7 @@ float fossil_lang_estimate_trust(const fossil_jellyfish_chain_t *chain, const ch
     return trust;
 }
 
-void fossil_lang_normalize(const char *input, char *out, size_t out_size) {
+void fossil_ai_lang_normalize(const char *input, char *out, size_t out_size) {
     struct {
         const char *slang;
         const char *formal;
@@ -288,9 +319,9 @@ void fossil_lang_normalize(const char *input, char *out, size_t out_size) {
     out[out_len] = '\0';
 }
 
-void fossil_lang_summarize(const char *input, char *out, size_t out_size) {
+void fossil_ai_lang_summarize(const char *input, char *out, size_t out_size) {
     char tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
-    size_t token_count = fossil_lang_tokenize(input, tokens, FOSSIL_JELLYFISH_MAX_TOKENS);
+    size_t token_count = fossil_ai_lang_tokenize(input, tokens, FOSSIL_JELLYFISH_MAX_TOKENS);
 
     size_t out_len = 0;
     for (size_t i = 0; i < token_count && out_len < out_size - 1; ++i) {
@@ -306,7 +337,7 @@ void fossil_lang_summarize(const char *input, char *out, size_t out_size) {
     out[out_len] = '\0';
 }
 
-void fossil_lang_extract_focus(const char *input, char *out, size_t out_size) {
+void fossil_ai_lang_extract_focus(const char *input, char *out, size_t out_size) {
     const char *stopwords[] = {
         "i", "you", "we", "they", "he", "she", "it",
         "me", "my", "mine", "your", "yours", "our", "ours", "their", "theirs", "his", "her", "hers", "its",
@@ -322,7 +353,7 @@ void fossil_lang_extract_focus(const char *input, char *out, size_t out_size) {
     };
 
     char tokens[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
-    size_t count = fossil_lang_tokenize(input, tokens, FOSSIL_JELLYFISH_MAX_TOKENS);
+    size_t count = fossil_ai_lang_tokenize(input, tokens, FOSSIL_JELLYFISH_MAX_TOKENS);
 
     for (size_t i = 0; i < count; ++i) {
         int skip = 0;
@@ -345,12 +376,12 @@ void fossil_lang_extract_focus(const char *input, char *out, size_t out_size) {
     out[out_size - 1] = '\0';
 }
 
-float fossil_lang_similarity(const char *a, const char *b) {
+float fossil_ai_lang_similarity(const char *a, const char *b) {
     char tokens_a[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
     char tokens_b[FOSSIL_JELLYFISH_MAX_TOKENS][FOSSIL_JELLYFISH_TOKEN_SIZE];
 
-    size_t count_a = fossil_lang_tokenize(a, tokens_a, FOSSIL_JELLYFISH_MAX_TOKENS);
-    size_t count_b = fossil_lang_tokenize(b, tokens_b, FOSSIL_JELLYFISH_MAX_TOKENS);
+    size_t count_a = fossil_ai_lang_tokenize(a, tokens_a, FOSSIL_JELLYFISH_MAX_TOKENS);
+    size_t count_b = fossil_ai_lang_tokenize(b, tokens_b, FOSSIL_JELLYFISH_MAX_TOKENS);
 
     size_t match = 0;
     for (size_t i = 0; i < count_a; ++i) {
@@ -368,11 +399,11 @@ float fossil_lang_similarity(const char *a, const char *b) {
     return (2.0f * match) / total; // Jaccard-based estimate
 }
 
-void fossil_lang_trace_log(const char *category, const char *input, float score) {
+void fossil_ai_lang_trace_log(const char *category, const char *input, float score) {
     fprintf(stderr, "[NLP-TRACE] [%s] Score=%.3f | Input=\"%s\"\n", category, score, input);
 }
 
-float fossil_lang_embedding_similarity(const float *vec_a, const float *vec_b, size_t len) {
+float fossil_ai_lang_embedding_similarity(const float *vec_a, const float *vec_b, size_t len) {
     float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
 
     for (size_t i = 0; i < len; ++i) {
@@ -435,7 +466,7 @@ static const synonym_pair replacements[] = {
     {"dangerous", "hazardous"}
 };
 
-void fossil_lang_generate_variants(const char *input, char outputs[][256], size_t max_outputs) {
+void fossil_ai_lang_generate_variants(const char *input, char outputs[][256], size_t max_outputs) {
     size_t count = 0;
 
     for (size_t i = 0; i < sizeof(replacements) / sizeof(replacements[0]); ++i) {
