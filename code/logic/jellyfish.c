@@ -33,6 +33,26 @@
 #include <sys/time.h>
 #endif
 
+/* ------------------------------------------------------------------
+ * Portable strnlen fallback (POSIX function may be missing on some
+ * older C libraries / MSVC prior to VS2015).
+ * ------------------------------------------------------------------ */
+#ifndef FOSSIL_JELLYFISH_STRNLEN_FALLBACK_H
+#define FOSSIL_JELLYFISH_STRNLEN_FALLBACK_H
+#include <stddef.h>
+static size_t fossil_jellyfish_strnlen_fallback(const char *s, size_t maxlen) {
+    if (!s) return 0;
+    size_t i = 0;
+    while (i < maxlen && s[i] != '\0') ++i;
+    return i;
+}
+#if !defined(strnlen)
+/* Map strnlen calls in this translation unit to the fallback if the
+ * system one is not available. */
+#define strnlen(s, n) fossil_jellyfish_strnlen_fallback((s), (n))
+#endif
+#endif
+
 // ========================================================
 // HASH Algorithm magic
 // ========================================================
