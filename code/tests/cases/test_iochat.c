@@ -52,8 +52,8 @@ FOSSIL_TEARDOWN(c_iochat_fixture) {
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
 FOSSIL_TEST_CASE(c_test_iochat_start_and_end_session) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
 
     int start_result = fossil_io_chat_start("test_session", &chain);
     ASSUME_ITS_EQUAL_I32(start_result, 0);
@@ -63,8 +63,8 @@ FOSSIL_TEST_CASE(c_test_iochat_start_and_end_session) {
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_respond_known_and_unknown) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
 
     fossil_io_chat_start("chat", &chain);
     fossil_io_chat_learn_response(&chain, "hi", "hello there!");
@@ -82,8 +82,8 @@ FOSSIL_TEST_CASE(c_test_iochat_respond_known_and_unknown) {
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_inject_system_message_and_immutable) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
 
     int result = fossil_io_chat_inject_system_message(&chain, "System Ready");
     ASSUME_ITS_EQUAL_I32(result, 0);
@@ -96,8 +96,8 @@ FOSSIL_TEST_CASE(c_test_iochat_inject_system_message_and_immutable) {
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_learn_response_and_turn_count) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
 
     fossil_io_chat_learn_response(&chain, "foo", "bar");
     fossil_io_chat_learn_response(&chain, "baz", "qux");
@@ -107,8 +107,8 @@ FOSSIL_TEST_CASE(c_test_iochat_learn_response_and_turn_count) {
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_summarize_session_basic) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
 
     fossil_io_chat_learn_response(&chain, "hello", "world");
     fossil_io_chat_learn_response(&chain, "how are you", "fine");
@@ -122,9 +122,9 @@ FOSSIL_TEST_CASE(c_test_iochat_summarize_session_basic) {
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_filter_recent_turns) {
-    fossil_jellyfish_chain_t chain, filtered;
-    fossil_jellyfish_init(&chain);
-    fossil_jellyfish_init(&filtered);
+    fossil_ai_jellyfish_chain_t chain, filtered;
+    fossil_ai_jellyfish_init(&chain);
+    fossil_ai_jellyfish_init(&filtered);
 
     fossil_io_chat_learn_response(&chain, "a", "1");
     fossil_io_chat_learn_response(&chain, "b", "2");
@@ -138,9 +138,9 @@ FOSSIL_TEST_CASE(c_test_iochat_filter_recent_turns) {
 }
 
 FOSSIL_TEST_CASE(c_test_iochat_export_and_import_history) {
-    fossil_jellyfish_chain_t chain, imported;
-    fossil_jellyfish_init(&chain);
-    fossil_jellyfish_init(&imported);
+    fossil_ai_jellyfish_chain_t chain, imported;
+    fossil_ai_jellyfish_init(&chain);
+    fossil_ai_jellyfish_init(&imported);
 
     fossil_io_chat_learn_response(&chain, "x", "y");
     fossil_io_chat_learn_response(&chain, "z", "w");

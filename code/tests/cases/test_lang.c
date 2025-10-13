@@ -85,8 +85,8 @@ FOSSIL_TEST_CASE(c_test_lang_detect_bias_or_falsehood) {
 }
 
 FOSSIL_TEST_CASE(c_test_lang_align_truth) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
     fossil_io_chat_learn_response(&chain, "The sky is blue.", "Yes, it is.");
     int aligned = fossil_lang_align_truth(&chain, "The sky is blue.");
     int unknown = fossil_lang_align_truth(&chain, "Grass is purple.");
@@ -121,8 +121,8 @@ FOSSIL_TEST_CASE(c_test_lang_extract_focus) {
 }
 
 FOSSIL_TEST_CASE(c_test_lang_estimate_trust) {
-    fossil_jellyfish_chain_t chain;
-    fossil_jellyfish_init(&chain);
+    fossil_ai_jellyfish_chain_t chain;
+    fossil_ai_jellyfish_init(&chain);
     float trust1 = fossil_lang_estimate_trust(&chain, "The sky is blue.");
     float trust2 = fossil_lang_estimate_trust(&chain, "Everyone knows this is the best!");
     ASSUME_ITS_TRUE(trust1 > trust2);
